@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">
+  <defs>
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#6366f1" />
+      <stop offset="100%" stop-color="#4338ca" />
+    </linearGradient>
+    <filter id="shadow" x="-10%" y="-10%" width="120%" height="120%">
+      <feDropShadow dx="0" dy="2" stdDeviation="2" flood-opacity="0.3"/>
+    </filter>
+  </defs>
+  
+  <!-- Rounded Brand Container -->
+  <rect x="2" y="2" width="60" height="60" rx="16" fill="url(#bgGrad)" />
+  
+  <!-- Stacked Inventory Boxes (Matching App Logo) -->
+  <g filter="url(#shadow)" stroke="#ffffff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none">
+    <!-- Top Box -->
+    <path d="M32 14L46 22L32 30L18 22Z" fill="#ffffff" fill-opacity="0.25" />
+    <!-- Left Box Body -->
+    <path d="M18 22V36L32 44V30Z" />
+    <!-- Right Box Body -->
+    <path d="M46 22V36L32 44" />
+    <!-- Inner Fold Line -->
+    <path d="M32 30V44" />
+    <!-- Extra Box Accent -->
+    <path d="M25 32.5L32 36.5L39 32.5" stroke-opacity="0.6" stroke-width="2" />
+  </g>
+</svg>
