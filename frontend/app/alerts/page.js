@@ -83,11 +83,13 @@ export default function AlertsPage() {
 
       {/* Filter Tabs */}
       <Tabs value={activeFilter} onValueChange={setActiveFilter} className="mb-4">
-        <TabsList className="grid w-full grid-cols-3 max-w-md">
-          <TabsTrigger value="all">All Alerts ({criticalProducts.length})</TabsTrigger>
-          <TabsTrigger value="out_of_stock">Out of Stock ({outOfStockList.length})</TabsTrigger>
-          <TabsTrigger value="low_stock">Low Stock ({lowStockList.length})</TabsTrigger>
-        </TabsList>
+        <div className="overflow-x-auto pb-1 scrollbar-thin scrollbar-thumb-muted">
+          <TabsList className="inline-flex sm:grid sm:grid-cols-3 w-max sm:w-full min-w-full h-auto p-1 border bg-muted/40 rounded-xl gap-1">
+            <TabsTrigger value="all" className="py-2 text-xs sm:text-sm">All Alerts ({criticalProducts.length})</TabsTrigger>
+            <TabsTrigger value="out_of_stock" className="py-2 text-xs sm:text-sm">Out of Stock ({outOfStockList.length})</TabsTrigger>
+            <TabsTrigger value="low_stock" className="py-2 text-xs sm:text-sm">Low Stock ({lowStockList.length})</TabsTrigger>
+          </TabsList>
+        </div>
       </Tabs>
 
       {/* Alerts Grid */}
