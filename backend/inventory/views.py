@@ -1,10 +1,9 @@
-import time
 from rest_framework import viewsets, status
 from rest_framework.views import APIView
 from rest_framework.response import Response
-from django.db.models import Sum, F
-from django.contrib.auth.models import User
 from django.contrib.auth import authenticate
+from django.contrib.auth.models import User
+from django.db.models import F, Sum
 from .models import Category, Supplier, Product, StockMovement, UserProfile, ContactRequest
 from .serializers import (
     CategorySerializer, SupplierSerializer, ProductSerializer,
@@ -23,30 +22,42 @@ class ProductViewSet(viewsets.ModelViewSet):
     queryset = Product.objects.all().order_by('-id')
     serializer_class = ProductSerializer
 
-    def get_queryset(self):
-        queryset = super().get_queryset()
-        search = self.request.query_params.get('search')
-        category = self.request.query_params.get('category')
-        if search:
-            queryset = queryset.filter(name__icontains=search) | queryset.filter(sku__icontains=search)
-        if category:
-            queryset = queryset.filter(category__id=category)
-        return queryset
-
     def create(self, request, *args, **kwargs):
-        data = request.data.copy()
-        sku = data.get('sku', '').strip()
+        sku = request.data.get('sku', '').strip()
+        name = request.data.get('name', '').strip()
+        category_id = request.data.get('category')
+        supplier_id = request.data.get('supplier')
+        price = request.data.get('price', 0)
+        stock = request.data.get('stock', 0)
+        threshold = request.data.get('threshold', 10)
+        emoji = request.data.get('emoji', '📦')
+        created_by = request.data.get('created_by', 'Administrator')
 
-        # Guarantee non-colliding SKU even with 1,000+ products
-        if not sku or Product.objects.filter(sku=sku).exists():
-            unique_suffix = str(int(time.time() * 1000))[-6:]
-            data['sku'] = f"SF-{unique_suffix}"
+        if not sku:
+            sku = f"SF-{request.data.get('name', 'PROD')[:3].upper()}-{Product.objects.count() + 100}"
 
-        serializer = self.get_serializer(data=data)
-        serializer.is_valid(raise_exception=True)
-        self.perform_create(serializer)
-        headers = self.get_success_headers(serializer.data)
-        return Response(serializer.data, status=status.HTTP_201_CREATED, headers=headers)
+        if Product.objects.filter(sku=sku).exists():
+            sku = f"{sku}-{int(Product.objects.count() + 1)}"
+
+        try:
+            category = Category.objects.get(id=category_id)
+            supplier = Supplier.objects.get(id=supplier_id)
+        except (Category.DoesNotExist, Supplier.DoesNotExist):
+            return Response({'error': 'Invalid Category or Supplier selected.'}, status=400)
+
+        product = Product.objects.create(
+            name=name,
+            sku=sku,
+            category=category,
+            supplier=supplier,
+            price=price,
+            stock=stock,
+            threshold=threshold,
+            emoji=emoji,
+            created_by=created_by,
+        )
+
+        return Response(ProductSerializer(product).data, status=status.HTTP_201_CREATED)
 
 class StockMovementViewSet(viewsets.ModelViewSet):
     queryset = StockMovement.objects.all().order_by('-id')
@@ -105,6 +116,10 @@ class UserProfileViewSet(viewsets.ModelViewSet):
         avatar = request.data.get('avatar', profile.avatar)
         new_password = request.data.get('password', '').strip()
 
+        # PREVENT BLOCKING ADMINISTRATOR ACCOUNTS
+        if profile.role == 'Administrator' and status_val in ['blocked', 'inactive']:
+            return Response({'error': 'Top Administrator accounts cannot be blocked or suspended.'}, status=400)
+
         try:
             django_user = User.objects.get(email=profile.email)
             if email != profile.email:
@@ -132,6 +147,22 @@ class UserProfileViewSet(viewsets.ModelViewSet):
             'message': 'Staff profile updated successfully',
             'user': UserProfileSerializer(profile).data
         })
+
+    def destroy(self, request, *args, **kwargs):
+        profile = self.get_object()
+        
+        # PREVENT DELETING ADMINISTRATOR ACCOUNTS
+        if profile.role == 'Administrator':
+            return Response({'error': 'Top Administrator accounts cannot be deleted.'}, status=400)
+
+        try:
+            django_user = User.objects.get(email=profile.email)
+            django_user.delete()
+        except User.DoesNotExist:
+            pass
+
+        profile.delete()
+        return Response({'message': f'Staff account {profile.name} removed successfully.'}, status=status.HTTP_200_OK)
 
 class StockInAPIView(APIView):
     def post(self, request):
@@ -164,7 +195,7 @@ class StockInAPIView(APIView):
             'message': 'Stock in recorded successfully',
             'movement': StockMovementSerializer(movement).data,
             'new_stock': product.stock
-        }, status=status.HTTP_201_CREATED)
+        }, status=201)
 
 class StockOutAPIView(APIView):
     def post(self, request):
@@ -180,7 +211,7 @@ class StockOutAPIView(APIView):
             return Response({'error': 'Product not found'}, status=404)
 
         if product.stock < quantity:
-            return Response({'error': 'Insufficient stock balance'}, status=400)
+            return Response({'error': f'Insufficient stock. Only {product.stock} units available.'}, status=400)
 
         product.stock -= quantity
         product.updated_at = 'just now'

@@ -2,7 +2,7 @@
 
 import { useState, useEffect, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
-import { Plus, MoreHorizontal, Edit, Trash2, Users, Copy, Check, ShieldCheck, Ban, CheckCircle } from "lucide-react";
+import { Plus, MoreHorizontal, Edit, Trash2, Users, Copy, Check, ShieldCheck, Ban, CheckCircle, Crown, Shield } from "lucide-react";
 import { PageHeader, StatusBadge } from "@/components/app-shell";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -14,11 +14,12 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { createUser, getUsers, updateUser, deleteUser } from "@/lib/api";
+import { getAuthUser } from "@/lib/auth";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 
 const roleColor = {
-  Administrator: "bg-primary/10 text-primary",
+  Administrator: "bg-primary/10 text-primary font-bold border-primary/20",
   "Inventory Manager": "bg-info/10 text-info",
   "Warehouse Staff": "bg-warning/15 [color:oklch(0.5_0.15_65)]",
   Viewer: "bg-muted text-muted-foreground",
@@ -30,6 +31,7 @@ function UsersContent() {
   const preEmail = searchParams.get("email");
 
   const [userList, setUserList] = useState([]);
+  const [currentUser, setCurrentUser] = useState(null);
   
   // Create / Edit Modal states
   const [open, setOpen] = useState(false);
@@ -56,6 +58,7 @@ function UsersContent() {
   }
 
   useEffect(() => {
+    setCurrentUser(getAuthUser());
     loadData();
     if (preName || preEmail) {
       setEditUser(null);
@@ -98,6 +101,12 @@ function UsersContent() {
       toast.error("Please enter user name and email");
       return;
     }
+
+    if (editUser && editUser.role === "Administrator" && statusVal === "blocked") {
+      toast.error("Top Administrator account cannot be blocked or suspended!");
+      return;
+    }
+
     setSubmitting(true);
 
     if (editUser) {
@@ -110,7 +119,7 @@ function UsersContent() {
         ...(password.trim() ? { password: password.trim() } : {}),
       };
       const res = await updateUser(editUser.id, payload);
-      if (res) {
+      if (res && !res.error) {
         toast.success(`Updated profile for ${name}`, {
           description: password.trim()
             ? "Password reset and account status updated."
@@ -119,7 +128,7 @@ function UsersContent() {
         setOpen(false);
         await loadData();
       } else {
-        toast.error("Failed to update user profile");
+        toast.error(res?.error || "Failed to update user profile");
       }
     } else {
       const payload = {
@@ -149,6 +158,13 @@ function UsersContent() {
   };
 
   const handleToggleBlockUser = async (u) => {
+    if (u.role === "Administrator") {
+      toast.error("Access Protected!", {
+        description: "Top Administrator accounts cannot be blocked or suspended.",
+      });
+      return;
+    }
+
     const isCurrentlyBlocked = u.status === "blocked" || u.status === "inactive";
     const newStatus = isCurrentlyBlocked ? "active" : "blocked";
     
@@ -157,7 +173,7 @@ function UsersContent() {
       status: newStatus,
     });
 
-    if (res) {
+    if (res && !res.error) {
       toast.success(
         newStatus === "blocked"
           ? `Blocked ${u.name} from accessing the application 🚫`
@@ -165,14 +181,25 @@ function UsersContent() {
       );
       await loadData();
     } else {
-      toast.error("Failed to update account status");
+      toast.error(res?.error || "Failed to update account status");
     }
   };
 
-  const handleDeleteUser = async (id, uName) => {
-    await deleteUser(id);
-    toast.success(`Removed user "${uName}"`);
-    await loadData();
+  const handleDeleteUser = async (u) => {
+    if (u.role === "Administrator") {
+      toast.error("Access Protected!", {
+        description: "Top Administrator accounts cannot be deleted.",
+      });
+      return;
+    }
+
+    const res = await deleteUser(u.id);
+    if (res && !res.error) {
+      toast.success(`Removed staff user "${u.name}"`);
+      await loadData();
+    } else {
+      toast.error(res?.error || "Failed to delete staff user");
+    }
   };
 
   const handleCopyCredentials = () => {
@@ -246,11 +273,13 @@ function UsersContent() {
 
                 <div className="space-y-1">
                   <Label>Access Status</Label>
-                  <Select value={statusVal} onValueChange={setStatusVal}>
+                  <Select value={statusVal} onValueChange={setStatusVal} disabled={editUser?.role === "Administrator"}>
                     <SelectTrigger><SelectValue placeholder="Select status" /></SelectTrigger>
                     <SelectContent>
                       <SelectItem value="active">Active (Access Allowed)</SelectItem>
-                      <SelectItem value="blocked">Blocked / Suspended</SelectItem>
+                      <SelectItem value="blocked" disabled={editUser?.role === "Administrator"}>
+                        Blocked / Suspended {editUser?.role === "Administrator" ? "(Protected)" : ""}
+                      </SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -272,7 +301,7 @@ function UsersContent() {
         </DialogContent>
       </Dialog>
 
-      {/* CREDENTIAL NOTICE DIALOG (POPUP FOR ADMIN TO COPY LOGIN DETAILS) */}
+      {/* CREDENTIAL NOTICE DIALOG */}
       <Dialog open={credModalOpen} onOpenChange={setCredModalOpen}>
         <DialogContent className="max-w-md">
           <DialogHeader>
@@ -342,6 +371,7 @@ function UsersContent() {
                 ) : (
                   userList.map((u) => {
                     const isBlocked = u.status === "blocked" || u.status === "inactive";
+                    const isTopAdmin = u.role === "Administrator";
                     return (
                       <TableRow key={u.id} className={cn(isBlocked && "bg-destructive/5 opacity-80")}>
                         <TableCell>
@@ -352,6 +382,11 @@ function UsersContent() {
                             <div>
                               <div className="font-medium flex items-center gap-2">
                                 {u.name}
+                                {isTopAdmin && (
+                                  <span className="inline-flex items-center gap-1 text-[10px] font-bold text-primary bg-primary/10 px-2 py-0.5 rounded-full border border-primary/20">
+                                    <Crown className="h-3 w-3 text-primary" /> Top Admin
+                                  </span>
+                                )}
                                 {isBlocked && <span className="text-[10px] font-bold text-destructive bg-destructive/10 px-1.5 py-0.2 rounded-md">BLOCKED</span>}
                               </div>
                               <div className="text-xs text-muted-foreground">{u.email}</div>
@@ -359,9 +394,17 @@ function UsersContent() {
                           </div>
                         </TableCell>
                         <TableCell>
-                          <span className={cn("inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium", roleColor[u.role] || "bg-muted text-muted-foreground")}>{u.role}</span>
+                          <span className={cn("inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium border", roleColor[u.role] || "bg-muted text-muted-foreground")}>{u.role}</span>
                         </TableCell>
-                        <TableCell><StatusBadge status={u.status} /></TableCell>
+                        <TableCell>
+                          {isTopAdmin ? (
+                            <span className="inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-xs font-semibold bg-primary/10 text-primary border-primary/20">
+                              <Shield className="h-3 w-3 text-primary" /> Active (Protected)
+                            </span>
+                          ) : (
+                            <StatusBadge status={u.status} />
+                          )}
+                        </TableCell>
                         <TableCell className="text-muted-foreground text-sm">{u.lastLogin || "just now"}</TableCell>
                         <TableCell>
                           <DropdownMenu>
@@ -372,14 +415,19 @@ function UsersContent() {
                               <DropdownMenuItem onClick={() => handleOpenEditModal(u)}>
                                 <Edit className="mr-2 h-4 w-4" /> Edit & Reset Password
                               </DropdownMenuItem>
-                              <DropdownMenuItem onClick={() => handleToggleBlockUser(u)} className={cn(isBlocked ? "text-emerald-600" : "text-amber-600")}>
-                                {isBlocked ? <CheckCircle className="mr-2 h-4 w-4" /> : <Ban className="mr-2 h-4 w-4" />}
-                                {isBlocked ? "Unblock Access" : "Block Access"}
-                              </DropdownMenuItem>
-                              <DropdownMenuSeparator />
-                              <DropdownMenuItem className="text-destructive" onClick={() => handleDeleteUser(u.id, u.name)}>
-                                <Trash2 className="mr-2 h-4 w-4" /> Delete Account
-                              </DropdownMenuItem>
+                              
+                              {!isTopAdmin && (
+                                <>
+                                  <DropdownMenuItem onClick={() => handleToggleBlockUser(u)} className={cn(isBlocked ? "text-emerald-600" : "text-amber-600")}>
+                                    {isBlocked ? <CheckCircle className="mr-2 h-4 w-4" /> : <Ban className="mr-2 h-4 w-4" />}
+                                    {isBlocked ? "Unblock Access" : "Block Access"}
+                                  </DropdownMenuItem>
+                                  <DropdownMenuSeparator />
+                                  <DropdownMenuItem className="text-destructive" onClick={() => handleDeleteUser(u)}>
+                                    <Trash2 className="mr-2 h-4 w-4" /> Delete Account
+                                  </DropdownMenuItem>
+                                </>
+                              )}
                             </DropdownMenuContent>
                           </DropdownMenu>
                         </TableCell>
