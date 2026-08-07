@@ -27,6 +27,8 @@ import {
   X,
   UserPlus,
   ArrowRight,
+  PanelLeftClose,
+  PanelLeftOpen,
 } from "lucide-react";
 import { useState, useEffect, useRef } from "react";
 import { cn } from "@/lib/utils";
@@ -68,7 +70,7 @@ const nav = [
   { href: "/settings", label: "Settings", icon: Settings, group: "Admin" },
 ];
 
-function SidebarContent({ onNavigate }) {
+function SidebarContent({ onNavigate, collapsed = false, onToggleCollapse }) {
   const pathname = usePathname();
   const [currentUser, setCurrentUser] = useState({
     name: "User",
@@ -85,32 +87,47 @@ function SidebarContent({ onNavigate }) {
   const groups = Array.from(new Set(allowedNav.map((n) => n.group)));
 
   return (
-    <div className="flex h-full flex-col bg-sidebar text-sidebar-foreground select-none">
+    <div className={cn("flex h-full flex-col bg-sidebar text-sidebar-foreground select-none transition-all duration-200", collapsed ? "w-16" : "w-64")}>
       {/* Brand Header */}
-      <div className="flex items-center justify-between px-5 py-4 border-b border-sidebar-border/80">
+      <div className={cn("flex items-center justify-between py-4 border-b border-sidebar-border/80", collapsed ? "px-3" : "px-5")}>
         <Link href="/" onClick={onNavigate} className="flex items-center gap-3 min-w-0 group">
           <div className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-gradient-to-br from-primary to-primary/80 text-primary-foreground shadow-md shadow-primary/20 group-hover:scale-105 transition-transform">
             <Boxes className="h-5 w-5" />
           </div>
-          <div className="min-w-0">
-            <div className="text-sm font-bold tracking-tight text-sidebar-foreground truncate flex items-center gap-1.5">
-              StockFlow
-              <span className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-1.5 py-0.2 text-[10px] font-semibold text-primary">
-                PRO
-              </span>
+          {!collapsed && (
+            <div className="min-w-0">
+              <div className="text-sm font-bold tracking-tight text-sidebar-foreground truncate flex items-center gap-1.5">
+                StockFlow
+                <span className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-1.5 py-0.2 text-[10px] font-semibold text-primary">
+                  PRO
+                </span>
+              </div>
+              <div className="text-[11px] text-muted-foreground truncate">Inventory Suite</div>
             </div>
-            <div className="text-[11px] text-muted-foreground truncate">Inventory Suite</div>
-          </div>
+          )}
         </Link>
+
+        {onToggleCollapse && (
+          <button
+            type="button"
+            onClick={onToggleCollapse}
+            title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+            className="hidden lg:grid h-8 w-8 place-items-center rounded-lg text-muted-foreground hover:bg-sidebar-accent hover:text-sidebar-foreground transition cursor-pointer"
+          >
+            {collapsed ? <PanelLeftOpen className="h-4 w-4" /> : <PanelLeftClose className="h-4 w-4" />}
+          </button>
+        )}
       </div>
 
       {/* Navigation Sections */}
-      <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-5 scrollbar-thin scrollbar-thumb-sidebar-border">
+      <nav className="flex-1 overflow-y-auto px-2 py-4 space-y-5 scrollbar-thin scrollbar-thumb-sidebar-border">
         {groups.map((g) => (
           <div key={g} className="space-y-1">
-            <div className="px-3 pb-1 text-[10px] font-bold uppercase tracking-wider text-muted-foreground/70">
-              {g}
-            </div>
+            {!collapsed && (
+              <div className="px-3 pb-1 text-[10px] font-bold uppercase tracking-wider text-muted-foreground/70">
+                {g}
+              </div>
+            )}
             <div className="space-y-0.5">
               {allowedNav.filter((n) => n.group === g).map((item) => {
                 const active = pathname === item.href;
@@ -120,8 +137,10 @@ function SidebarContent({ onNavigate }) {
                     key={item.href}
                     href={item.href}
                     onClick={onNavigate}
+                    title={collapsed ? item.label : undefined}
                     className={cn(
-                      "group relative flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-all duration-150",
+                      "group relative flex items-center gap-3 rounded-lg py-2 text-sm font-medium transition-all duration-150",
+                      collapsed ? "px-2.5 justify-center" : "px-3",
                       active
                         ? "bg-primary/10 text-primary font-semibold shadow-xs"
                         : "text-sidebar-foreground/70 hover:bg-sidebar-accent/70 hover:text-sidebar-foreground"
@@ -131,7 +150,7 @@ function SidebarContent({ onNavigate }) {
                       <span className="absolute left-0 top-1.5 bottom-1.5 w-1 rounded-r-full bg-primary" />
                     )}
                     <Icon className={cn("h-4 w-4 shrink-0 transition-colors", active ? "text-primary" : "text-muted-foreground group-hover:text-sidebar-foreground")} />
-                    <span className="truncate flex-1">{item.label}</span>
+                    {!collapsed && <span className="truncate flex-1">{item.label}</span>}
                   </Link>
                 );
               })}
@@ -141,41 +160,47 @@ function SidebarContent({ onNavigate }) {
       </nav>
 
       {/* Quick Status Card */}
-      <div className="px-3 py-2">
-        <div className="rounded-xl border border-sidebar-border bg-sidebar-accent/40 p-3 text-xs space-y-2">
-          <div className="flex items-center justify-between font-semibold text-sidebar-foreground">
-            <span className="flex items-center gap-1.5">
-              <Sparkles className="h-3.5 w-3.5 text-primary" /> Role Access
-            </span>
-            <Badge variant="outline" className="text-[10px] px-1.5 py-0">
-              {currentUser.role}
-            </Badge>
+      {!collapsed && (
+        <div className="px-3 py-2">
+          <div className="rounded-xl border border-sidebar-border bg-sidebar-accent/40 p-3 text-xs space-y-2">
+            <div className="flex items-center justify-between font-semibold text-sidebar-foreground">
+              <span className="flex items-center gap-1.5">
+                <Sparkles className="h-3.5 w-3.5 text-primary" /> Role Access
+              </span>
+              <Badge variant="outline" className="text-[10px] px-1.5 py-0">
+                {currentUser.role}
+              </Badge>
+            </div>
+            <p className="text-[11px] text-muted-foreground">Authorized permissions active.</p>
           </div>
-          <p className="text-[11px] text-muted-foreground">Authorized permissions active.</p>
         </div>
-      </div>
+      )}
 
       {/* Footer User Profile */}
-      <div className="border-t border-sidebar-border p-3 flex items-center justify-between gap-2">
+      <div className={cn("border-t border-sidebar-border p-3 flex items-center gap-2", collapsed ? "justify-center" : "justify-between")}>
         <Link href="/profile" onClick={onNavigate} className="flex items-center gap-2.5 min-w-0 flex-1 hover:bg-sidebar-accent/60 p-1.5 rounded-lg transition">
           <Avatar className="h-8 w-8 shrink-0">
             <AvatarFallback className="bg-primary/15 text-primary text-xs font-semibold">
               {currentUser.avatar}
             </AvatarFallback>
           </Avatar>
-          <div className="min-w-0 flex-1">
-            <div className="text-xs font-semibold text-sidebar-foreground truncate">{currentUser.name}</div>
-            <div className="text-[10px] text-muted-foreground truncate">{currentUser.role}</div>
-          </div>
+          {!collapsed && (
+            <div className="min-w-0 flex-1">
+              <div className="text-xs font-semibold text-sidebar-foreground truncate">{currentUser.name}</div>
+              <div className="text-[10px] text-muted-foreground truncate">{currentUser.role}</div>
+            </div>
+          )}
         </Link>
-        <button
-          type="button"
-          onClick={logoutUser}
-          title="Logout"
-          className="grid h-8 w-8 shrink-0 place-items-center rounded-lg text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition cursor-pointer"
-        >
-          <LogOut className="h-4 w-4" />
-        </button>
+        {!collapsed && (
+          <button
+            type="button"
+            onClick={logoutUser}
+            title="Logout"
+            className="grid h-8 w-8 shrink-0 place-items-center rounded-lg text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition cursor-pointer"
+          >
+            <LogOut className="h-4 w-4" />
+          </button>
+        )}
       </div>
     </div>
   );
@@ -610,6 +635,7 @@ function UserMenu() {
 
 export function AppShell({ children }) {
   const [open, setOpen] = useState(false);
+  const [collapsed, setCollapsed] = useState(false);
   const [checkingAuth, setCheckingAuth] = useState(true);
   const pathname = usePathname();
   const router = useRouter();
@@ -657,8 +683,8 @@ export function AppShell({ children }) {
 
   return (
     <div className="flex min-h-screen w-full bg-muted/30">
-      <aside className="hidden lg:flex w-64 shrink-0 flex-col sticky top-0 h-screen border-r border-sidebar-border bg-sidebar z-40">
-        <SidebarContent />
+      <aside className={cn("hidden lg:flex shrink-0 flex-col sticky top-0 h-screen border-r border-sidebar-border bg-sidebar z-40 transition-all duration-200", collapsed ? "w-16" : "w-64")}>
+        <SidebarContent collapsed={collapsed} onToggleCollapse={() => setCollapsed(!collapsed)} />
       </aside>
 
       <div className="flex min-w-0 flex-1 flex-col">
@@ -673,6 +699,17 @@ export function AppShell({ children }) {
               <SidebarContent onNavigate={() => setOpen(false)} />
             </SheetContent>
           </Sheet>
+
+          {/* SIDEBAR COLLAPSE TOGGLE BUTTON */}
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => setCollapsed(!collapsed)}
+            title={collapsed ? "Expand sidebar (Full view)" : "Collapse sidebar (Compact view)"}
+            className="hidden lg:flex shrink-0 text-muted-foreground hover:text-foreground"
+          >
+            {collapsed ? <PanelLeftOpen className="h-5 w-5 text-primary" /> : <PanelLeftClose className="h-5 w-5" />}
+          </Button>
 
           <GlobalSearch />
 

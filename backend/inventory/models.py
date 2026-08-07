@@ -4,6 +4,7 @@ class Category(models.Model):
     name = models.CharField(max_length=100)
     description = models.TextField(blank=True, default='')
     status = models.CharField(max_length=20, default='active')
+    created_by = models.CharField(max_length=150, default='Administrator')
     created_at = models.DateField(auto_now_add=True)
 
     def __str__(self):
@@ -16,6 +17,7 @@ class Supplier(models.Model):
     phone = models.CharField(max_length=50)
     address = models.CharField(max_length=255)
     status = models.CharField(max_length=20, default='active')
+    created_by = models.CharField(max_length=150, default='Administrator')
     created_at = models.DateField(auto_now_add=True)
 
     def __str__(self):
@@ -30,6 +32,7 @@ class Product(models.Model):
     stock = models.IntegerField(default=0)
     threshold = models.IntegerField(default=10)
     emoji = models.CharField(max_length=10, default='📦')
+    created_by = models.CharField(max_length=150, default='Administrator')
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.CharField(max_length=50, default='just now')
 

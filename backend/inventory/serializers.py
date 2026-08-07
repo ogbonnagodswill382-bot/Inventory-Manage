@@ -6,7 +6,7 @@ class CategorySerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Category
-        fields = ['id', 'name', 'description', 'productCount', 'status', 'created_at']
+        fields = ['id', 'name', 'description', 'productCount', 'status', 'created_by', 'created_at']
 
     def get_productCount(self, obj):
         return obj.products.count()
@@ -16,7 +16,7 @@ class SupplierSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Supplier
-        fields = ['id', 'name', 'contact', 'email', 'phone', 'address', 'productCount', 'status', 'created_at']
+        fields = ['id', 'name', 'contact', 'email', 'phone', 'address', 'productCount', 'status', 'created_by', 'created_at']
 
     def get_productCount(self, obj):
         return obj.products.count()
@@ -31,7 +31,7 @@ class ProductSerializer(serializers.ModelSerializer):
         fields = [
             'id', 'name', 'sku', 'category', 'category_name',
             'supplier', 'supplier_name', 'price', 'stock', 'threshold',
-            'status', 'emoji', 'updated_at', 'created_at'
+            'status', 'emoji', 'created_by', 'updated_at', 'created_at'
         ]
 
     def get_status(self, obj):

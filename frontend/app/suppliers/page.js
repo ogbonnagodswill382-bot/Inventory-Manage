@@ -1,24 +1,27 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Plus, Mail, Phone, MapPin, MoreHorizontal, Edit, Trash2, Truck } from "lucide-react";
+import { Plus, MoreHorizontal, Edit, Trash2, Search, Truck, User } from "lucide-react";
 import { PageHeader, StatusBadge } from "@/components/app-shell";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
 import { getSuppliers, createSupplier, updateSupplier, deleteSupplier } from "@/lib/api";
+import { getAuthUser } from "@/lib/auth";
 import { toast } from "sonner";
 
 export default function SuppliersPage() {
   const [supplierList, setSupplierList] = useState([]);
+  const [search, setSearch] = useState("");
   
   // Add / Edit Modal states
   const [open, setOpen] = useState(false);
   const [editSupplier, setEditSupplier] = useState(null);
-  
+
   const [name, setName] = useState("");
   const [contact, setContact] = useState("");
   const [email, setEmail] = useState("");
@@ -59,18 +62,22 @@ export default function SuppliersPage() {
 
   const handleSaveSupplier = async (e) => {
     e.preventDefault();
-    if (!name.trim()) {
-      toast.error("Please enter a supplier name");
+    if (!name.trim() || !email.trim()) {
+      toast.error("Please enter supplier name and email");
       return;
     }
+
     setSubmitting(true);
+    const activeUser = getAuthUser();
+
     const payload = {
       name: name.trim(),
-      contact: contact.trim() || "Main Contact",
-      email: email.trim() || "supplier@example.com",
-      phone: phone.trim() || "+1 555-0000",
-      address: address.trim() || "Primary Warehouse Address",
+      contact: contact.trim(),
+      email: email.trim(),
+      phone: phone.trim(),
+      address: address.trim(),
       status: editSupplier ? editSupplier.status : "active",
+      created_by: activeUser?.name || "Administrator",
     };
 
     let res;
@@ -97,11 +104,16 @@ export default function SuppliersPage() {
     await loadData();
   };
 
+  const filteredSuppliers = supplierList.filter(s =>
+    s.name.toLowerCase().includes(search.toLowerCase()) ||
+    s.contact.toLowerCase().includes(search.toLowerCase())
+  );
+
   return (
     <div>
       <PageHeader
         title="Suppliers"
-        description={`${supplierList.length} active partners providing your inventory.`}
+        description="Manage vendor profiles, contact details, and procurement sources."
         actions={
           <Button onClick={handleOpenAddModal}>
             <Plus className="mr-2 h-4 w-4" /> Add supplier
@@ -109,39 +121,42 @@ export default function SuppliersPage() {
         }
       />
 
+      {/* CREATE / EDIT SUPPLIER MODAL */}
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="max-w-md">
           <form onSubmit={handleSaveSupplier}>
             <DialogHeader>
-              <DialogTitle>{editSupplier ? "Edit supplier" : "New supplier"}</DialogTitle>
+              <DialogTitle>{editSupplier ? "Edit supplier" : "Add new supplier"}</DialogTitle>
               <DialogDescription>
-                {editSupplier ? "Update supplier partner details in Django." : "Add a new supplier partner into Django database."}
+                {editSupplier ? "Update vendor details and contact information." : "Create a new supplier profile for inventory reordering."}
               </DialogDescription>
             </DialogHeader>
-            <div className="space-y-3 py-3 text-sm">
+
+            <div className="grid gap-3 py-3 text-sm">
               <div className="space-y-1">
-                <Label htmlFor="sup-name">Company Name</Label>
-                <Input id="sup-name" placeholder="e.g. NorthWind Traders" value={name} onChange={(e) => setName(e.target.value)} required />
-              </div>
-              <div className="space-y-1">
-                <Label htmlFor="sup-contact">Contact Person</Label>
-                <Input id="sup-contact" placeholder="e.g. Alice Chen" value={contact} onChange={(e) => setContact(e.target.value)} />
+                <Label>Supplier / Company Name</Label>
+                <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Acme Corporation" required />
               </div>
               <div className="grid grid-cols-2 gap-2">
                 <div className="space-y-1">
-                  <Label htmlFor="sup-email">Email</Label>
-                  <Input id="sup-email" type="email" placeholder="alice@company.com" value={email} onChange={(e) => setEmail(e.target.value)} />
+                  <Label>Contact Person</Label>
+                  <Input value={contact} onChange={(e) => setContact(e.target.value)} placeholder="Jane Doe" required />
                 </div>
                 <div className="space-y-1">
-                  <Label htmlFor="sup-phone">Phone</Label>
-                  <Input id="sup-phone" placeholder="+1 555-0199" value={phone} onChange={(e) => setPhone(e.target.value)} />
+                  <Label>Phone Number</Label>
+                  <Input value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="+1 (555) 000-0000" required />
                 </div>
               </div>
               <div className="space-y-1">
-                <Label htmlFor="sup-address">Address</Label>
-                <Input id="sup-address" placeholder="San Francisco, CA" value={address} onChange={(e) => setAddress(e.target.value)} />
+                <Label>Email Address</Label>
+                <Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="orders@acme.com" required />
+              </div>
+              <div className="space-y-1">
+                <Label>Address</Label>
+                <Input value={address} onChange={(e) => setAddress(e.target.value)} placeholder="123 Industrial Way, Suite 400" required />
               </div>
             </div>
+
             <DialogFooter>
               <Button type="button" variant="outline" onClick={() => setOpen(false)}>Cancel</Button>
               <Button type="submit" disabled={submitting}>
@@ -152,68 +167,78 @@ export default function SuppliersPage() {
         </DialogContent>
       </Dialog>
 
-      {supplierList.length === 0 ? (
-        <Card>
-          <CardContent className="p-12 text-center text-muted-foreground">
-            <Truck className="h-10 w-10 mx-auto mb-2 text-muted-foreground/40" />
-            <p className="font-semibold text-base text-foreground">No suppliers found in database</p>
-            <p className="text-xs text-muted-foreground mt-1">Click "+ Add Supplier" to register your first partner.</p>
-          </CardContent>
-        </Card>
-      ) : (
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {supplierList.map((s) => (
-            <Card key={s.id} className="hover:shadow-md transition-shadow">
-              <CardContent className="p-5">
-                <div className="flex items-start justify-between gap-2">
-                  <div className="flex items-center gap-3 min-w-0">
-                    <div className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-primary/10 text-primary font-semibold">
-                      {s.name.split(" ").map(w => w[0]).slice(0, 2).join("")}
-                    </div>
-                    <div className="min-w-0">
-                      <div className="font-semibold truncate">{s.name}</div>
-                      <div className="text-xs text-muted-foreground truncate">{s.contact}</div>
-                    </div>
-                  </div>
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button variant="ghost" size="icon" className="h-8 w-8"><MoreHorizontal className="h-4 w-4" /></Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                      <DropdownMenuItem onClick={() => handleOpenEditModal(s)}>
-                        <Edit className="mr-2 h-4 w-4" /> Edit
-                      </DropdownMenuItem>
-                      <DropdownMenuItem className="text-destructive" onClick={() => handleDeleteSupplier(s.id, s.name)}>
-                        <Trash2 className="mr-2 h-4 w-4" /> Delete
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                </div>
-
-                <div className="mt-4 space-y-2 text-sm">
-                  <div className="flex items-center gap-2 text-muted-foreground">
-                    <Mail className="h-3.5 w-3.5 shrink-0" /><span className="truncate">{s.email}</span>
-                  </div>
-                  <div className="flex items-center gap-2 text-muted-foreground">
-                    <Phone className="h-3.5 w-3.5 shrink-0" /><span className="truncate">{s.phone}</span>
-                  </div>
-                  <div className="flex items-center gap-2 text-muted-foreground">
-                    <MapPin className="h-3.5 w-3.5 shrink-0" /><span className="truncate">{s.address}</span>
-                  </div>
-                </div>
-
-                <div className="mt-4 flex items-center justify-between pt-4 border-t">
-                  <div>
-                    <div className="text-xs text-muted-foreground">Products supplied</div>
-                    <div className="text-lg font-semibold">{s.productCount ?? 0}</div>
-                  </div>
-                  <StatusBadge status={s.status} />
-                </div>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-      )}
+      <Card>
+        <CardContent className="p-4 md:p-6 space-y-4">
+          <div className="relative max-w-sm">
+            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              placeholder="Search suppliers or contact…"
+              className="pl-9"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+            />
+          </div>
+          <div className="rounded-lg border overflow-x-auto">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Supplier</TableHead>
+                  <TableHead>Contact</TableHead>
+                  <TableHead>Created By</TableHead>
+                  <TableHead className="text-right">Products</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead className="w-10" />
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {filteredSuppliers.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={6} className="text-center py-10 text-muted-foreground">
+                      <Truck className="h-8 w-8 mx-auto mb-2 text-muted-foreground/40" />
+                      No suppliers found in database. Click "+ Add Supplier" to create one.
+                    </TableCell>
+                  </TableRow>
+                ) : (
+                  filteredSuppliers.map((s) => (
+                    <TableRow key={s.id}>
+                      <TableCell>
+                        <div className="font-medium">{s.name}</div>
+                        <div className="text-xs text-muted-foreground">{s.address}</div>
+                      </TableCell>
+                      <TableCell>
+                        <div className="text-sm">{s.contact}</div>
+                        <div className="text-xs text-muted-foreground">{s.email}</div>
+                      </TableCell>
+                      <TableCell className="text-sm font-medium">
+                        <span className="inline-flex items-center gap-1.5 rounded-md bg-muted px-2 py-0.5 text-xs text-muted-foreground">
+                          <User className="h-3 w-3 text-primary" /> {s.created_by || "Administrator"}
+                        </span>
+                      </TableCell>
+                      <TableCell className="text-right font-medium">{s.productCount ?? 0}</TableCell>
+                      <TableCell><StatusBadge status={s.status} /></TableCell>
+                      <TableCell>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="icon" className="h-8 w-8"><MoreHorizontal className="h-4 w-4" /></Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuItem onClick={() => handleOpenEditModal(s)}>
+                              <Edit className="mr-2 h-4 w-4" /> Edit supplier
+                            </DropdownMenuItem>
+                            <DropdownMenuItem className="text-destructive" onClick={() => handleDeleteSupplier(s.id, s.name)}>
+                              <Trash2 className="mr-2 h-4 w-4" /> Delete supplier
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </TableCell>
+                    </TableRow>
+                  ))
+                )}
+              </TableBody>
+            </Table>
+          </div>
+        </CardContent>
+      </Card>
     </div>
   );
 }

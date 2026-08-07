@@ -1,16 +1,17 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Plus, MoreHorizontal, Edit, Trash2, Search, FolderTree } from "lucide-react";
+import { Plus, MoreHorizontal, Edit, Trash2, Search, FolderTree, User } from "lucide-react";
 import { PageHeader, StatusBadge } from "@/components/app-shell";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { getCategories, createCategory, updateCategory, deleteCategory } from "@/lib/api";
+import { getAuthUser } from "@/lib/auth";
 import { toast } from "sonner";
 
 export default function CategoriesPage() {
@@ -56,10 +57,13 @@ export default function CategoriesPage() {
       return;
     }
     setSubmitting(true);
+    const activeUser = getAuthUser();
+
     const payload = {
       name: name.trim(),
       description: description.trim(),
       status: editCategory ? editCategory.status : "active",
+      created_by: activeUser?.name || "Administrator",
     };
 
     let res;
@@ -158,6 +162,7 @@ export default function CategoriesPage() {
               <TableHeader>
                 <TableRow>
                   <TableHead>Category</TableHead>
+                  <TableHead>Created By</TableHead>
                   <TableHead className="text-right">Products</TableHead>
                   <TableHead>Created</TableHead>
                   <TableHead>Status</TableHead>
@@ -167,7 +172,7 @@ export default function CategoriesPage() {
               <TableBody>
                 {filteredCategories.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={5} className="text-center py-10 text-muted-foreground">
+                    <TableCell colSpan={6} className="text-center py-10 text-muted-foreground">
                       <FolderTree className="h-8 w-8 mx-auto mb-2 text-muted-foreground/40" />
                       No categories found in database. Click "+ Add Category" to create one.
                     </TableCell>
@@ -176,8 +181,13 @@ export default function CategoriesPage() {
                   filteredCategories.map((c) => (
                     <TableRow key={c.id}>
                       <TableCell className="font-medium">{c.name}</TableCell>
-                      <TableCell className="text-right">{c.productCount ?? 0}</TableCell>
-                      <TableCell className="text-muted-foreground">{c.created_at || "Just now"}</TableCell>
+                      <TableCell className="text-sm font-medium">
+                        <span className="inline-flex items-center gap-1.5 rounded-md bg-muted px-2 py-0.5 text-xs text-muted-foreground">
+                          <User className="h-3 w-3 text-primary" /> {c.created_by || "Administrator"}
+                        </span>
+                      </TableCell>
+                      <TableCell className="text-right font-medium">{c.productCount ?? 0}</TableCell>
+                      <TableCell className="text-muted-foreground text-sm">{c.created_at || "Just now"}</TableCell>
                       <TableCell><StatusBadge status={c.status} /></TableCell>
                       <TableCell>
                         <DropdownMenu>

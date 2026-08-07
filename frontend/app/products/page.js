@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Plus, Search, Filter, Download, MoreHorizontal, Edit, Trash2, Package, ChevronLeft, ChevronRight } from "lucide-react";
+import { Plus, Search, Filter, Download, MoreHorizontal, Edit, Trash2, Package, ChevronLeft, ChevronRight, User } from "lucide-react";
 import { PageHeader, StatusBadge } from "@/components/app-shell";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -13,6 +13,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { ProductIcon, PRODUCT_ICON_OPTIONS } from "@/components/product-icon";
 import { getProducts, getCategories, getSuppliers, createProduct, updateProduct, deleteProduct } from "@/lib/api";
+import { getAuthUser } from "@/lib/auth";
 import { exportToCSV } from "@/lib/export";
 import { formatCurrency, getCurrencySymbol } from "@/lib/theme";
 import { toast } from "sonner";
@@ -98,6 +99,7 @@ export default function ProductsPage() {
 
     setSubmitting(true);
     const finalSku = sku.trim() || `SF-${Date.now().toString().slice(-6)}`;
+    const activeUser = getAuthUser();
 
     const payload = {
       name,
@@ -108,6 +110,7 @@ export default function ProductsPage() {
       stock: parseInt(stock),
       threshold: parseInt(threshold),
       emoji,
+      created_by: activeUser?.name || "Administrator",
     };
 
     if (editProduct) {
@@ -143,7 +146,7 @@ export default function ProductsPage() {
   };
 
   const handleExportCSV = () => {
-    const headers = ["ID", "Name", "SKU", "Category", "Supplier", `Price (${currencySymbol})`, "Stock", "Threshold", "Status"];
+    const headers = ["ID", "Name", "SKU", "Category", "Supplier", `Price (${currencySymbol})`, "Stock", "Threshold", "Status", "Created By"];
     const rows = filteredProducts.map(p => [
       p.id,
       p.name,
@@ -154,6 +157,7 @@ export default function ProductsPage() {
       p.stock,
       p.threshold,
       p.status,
+      p.created_by || "Administrator",
     ]);
     exportToCSV("products_catalog.csv", headers, rows);
     toast.success("Downloaded products_catalog.csv");
@@ -183,8 +187,8 @@ export default function ProductsPage() {
   return (
     <div>
       <PageHeader
-        title="Products"
-        description="Manage your product catalog, stock balances, and alert thresholds."
+        title="Products Catalog"
+        description="Manage your product catalog, stock balances, and author attribution."
         actions={
           <>
             <Button variant="outline" onClick={handleExportCSV}>
@@ -358,6 +362,7 @@ export default function ProductsPage() {
                   <TableHead>Product</TableHead>
                   <TableHead>Category</TableHead>
                   <TableHead>Supplier</TableHead>
+                  <TableHead>Created By</TableHead>
                   <TableHead className="text-right">Price</TableHead>
                   <TableHead className="text-right">Stock</TableHead>
                   <TableHead>Status</TableHead>
@@ -367,7 +372,7 @@ export default function ProductsPage() {
               <TableBody>
                 {paginatedProducts.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={7} className="text-center py-10 text-muted-foreground">
+                    <TableCell colSpan={8} className="text-center py-10 text-muted-foreground">
                       <Package className="h-8 w-8 mx-auto mb-2 text-muted-foreground/40" />
                       No products found matching your filter criteria.
                     </TableCell>
@@ -386,6 +391,11 @@ export default function ProductsPage() {
                       </TableCell>
                       <TableCell className="text-muted-foreground text-sm">{p.category_name || "Uncategorized"}</TableCell>
                       <TableCell className="text-muted-foreground text-sm">{p.supplier_name || "Direct Supplier"}</TableCell>
+                      <TableCell className="text-sm font-medium">
+                        <span className="inline-flex items-center gap-1.5 rounded-md bg-muted px-2 py-0.5 text-xs text-muted-foreground">
+                          <User className="h-3 w-3 text-primary" /> {p.created_by || "Administrator"}
+                        </span>
+                      </TableCell>
                       <TableCell className="text-right font-medium">{formatCurrency(p.price)}</TableCell>
                       <TableCell className="text-right font-semibold">{p.stock}</TableCell>
                       <TableCell><StatusBadge status={p.status} /></TableCell>
