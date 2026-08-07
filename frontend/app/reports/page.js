@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { FileDown, DollarSign, TrendingUp, Package, Truck } from "lucide-react";
+import { FileDown, Wallet, TrendingUp, Package, Truck, Coins } from "lucide-react";
 import { PageHeader } from "@/components/app-shell";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -29,8 +29,10 @@ function buildStockTrendData(movements = []) {
   if (movements && Array.isArray(movements) && movements.length > 0) {
     movements.forEach((m) => {
       let dayName = "Mon";
-      if (m.date) {
-        const d = new Date(m.date);
+      const rawDate = m.date || m.created_at;
+      if (rawDate) {
+        const isoString = String(rawDate).replace(" ", "T");
+        const d = new Date(isoString);
         if (!isNaN(d.getTime())) {
           dayName = d.toLocaleDateString("en-US", { weekday: "short" });
         }
@@ -164,7 +166,7 @@ export default function ReportsPage() {
                 </div>
               </div>
               <div className="grid h-10 w-10 place-items-center rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
-                <DollarSign className="h-5 w-5" />
+                <Wallet className="h-5 w-5" />
               </div>
             </CardContent>
           </Card>
@@ -211,7 +213,10 @@ export default function ReportsPage() {
       <div className="grid gap-4 lg:grid-cols-3">
         <Card className="lg:col-span-2">
           <CardHeader>
-            <CardTitle className="text-base font-semibold">Stock Movement Trend (Live Database)</CardTitle>
+            <CardTitle className="text-base font-semibold flex items-center justify-between">
+              <span>Stock Movement Trend (Live Database)</span>
+              <span className="text-xs font-normal text-muted-foreground">Real-time Stock In (+) vs Stock Out (-)</span>
+            </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="h-72 w-full">
