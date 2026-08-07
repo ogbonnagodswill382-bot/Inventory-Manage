@@ -65,6 +65,7 @@ export default function ProductsPage() {
   }, []);
 
   const handleOpenAddModal = () => {
+    const appSettings = getAppSettings();
     setEditProduct(null);
     setName("");
     setSku(`SF-${Date.now().toString().slice(-6)}`);
@@ -72,7 +73,7 @@ export default function ProductsPage() {
     setSupplierId(suppliers.length > 0 ? String(suppliers[0].id) : "");
     setPrice("99.99");
     setStock("10");
-    setThreshold("5");
+    setThreshold(String(appSettings.lowStockThreshold || 10));
     setEmoji("package");
     setOpen(true);
   };

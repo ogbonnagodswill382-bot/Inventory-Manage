@@ -29,6 +29,7 @@ import {
   ArrowRight,
   PanelLeftClose,
   PanelLeftOpen,
+  Filter,
 } from "lucide-react";
 import { useState, useEffect, useRef } from "react";
 import { cn } from "@/lib/utils";
@@ -87,7 +88,7 @@ function SidebarContent({ onNavigate, collapsed = false, onToggleCollapse }) {
   const groups = Array.from(new Set(allowedNav.map((n) => n.group)));
 
   return (
-    <div className={cn("flex h-full flex-col bg-sidebar text-sidebar-foreground select-none transition-all duration-200", collapsed ? "w-16" : "w-64")}>
+    <div className={cn("flex h-full flex-col bg-sidebar text-sidebar-foreground select-none transition-all duration-300", collapsed ? "w-16" : "w-64")}>
       {/* Brand Header */}
       <div className={cn("flex items-center justify-between py-4 border-b border-sidebar-border/80", collapsed ? "px-3" : "px-5")}>
         <Link href="/" onClick={onNavigate} className="flex items-center gap-3 min-w-0 group">
@@ -111,10 +112,10 @@ function SidebarContent({ onNavigate, collapsed = false, onToggleCollapse }) {
           <button
             type="button"
             onClick={onToggleCollapse}
-            title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+            title={collapsed ? "Expand sidebar (Full View)" : "Fold back sidebar (Full Canvas View)"}
             className="hidden lg:grid h-8 w-8 place-items-center rounded-lg text-muted-foreground hover:bg-sidebar-accent hover:text-sidebar-foreground transition cursor-pointer"
           >
-            {collapsed ? <PanelLeftOpen className="h-4 w-4" /> : <PanelLeftClose className="h-4 w-4" />}
+            {collapsed ? <PanelLeftOpen className="h-4 w-4 text-primary" /> : <PanelLeftClose className="h-4 w-4" />}
           </button>
         )}
       </div>
@@ -389,6 +390,7 @@ function GlobalSearch() {
 function Notifications() {
   const [notifications, setNotifications] = useState([]);
   const [readCount, setReadCount] = useState(0);
+  const [activeTab, setActiveTab] = useState("all");
 
   useEffect(() => {
     async function loadNotifications() {
@@ -412,6 +414,7 @@ function Notifications() {
             sub: `${r.email} — "${r.message}"`,
             time: r.date || "Just now",
             type: "contact",
+            category: "requests",
             link: `/users?name=${encodeURIComponent(r.name)}&email=${encodeURIComponent(r.email)}`,
           });
         });
@@ -423,9 +426,10 @@ function Notifications() {
             list.push({
               id: `out-${p.id}`,
               title: `${p.name} is out of stock!`,
-              sub: `SKU: ${p.sku} · 0 units remaining`,
+              sub: `SKU: ${p.sku} · 0 units remaining (Threshold: ${p.threshold})`,
               time: "Urgent",
               type: "danger",
+              category: "urgent",
               link: `/stock-in?product=${p.id}`,
             });
           } else if (p.stock <= p.threshold) {
@@ -435,6 +439,7 @@ function Notifications() {
               sub: `${p.stock} units remaining (Threshold: ${p.threshold})`,
               time: "Warning",
               type: "warning",
+              category: "urgent",
               link: `/stock-in?product=${p.id}`,
             });
           }
@@ -449,6 +454,7 @@ function Notifications() {
             sub: `${m.product_name} · ${m.quantity} units by ${m.user}`,
             time: m.date || "Recently",
             type: m.type === "in" ? "success" : "info",
+            category: "activity",
             link: "/stock-history",
           });
         });
@@ -461,6 +467,13 @@ function Notifications() {
 
   const unreadCount = Math.max(0, notifications.length - readCount);
 
+  const filteredNotifications = notifications.filter((n) => {
+    if (activeTab === "urgent") return n.category === "urgent";
+    if (activeTab === "requests") return n.category === "requests";
+    if (activeTab === "activity") return n.category === "activity";
+    return true;
+  });
+
   const handleMarkAllRead = () => {
     setReadCount(notifications.length);
     toast.success("All notifications marked as read");
@@ -470,7 +483,7 @@ function Notifications() {
     e.stopPropagation();
     e.preventDefault();
     setNotifications((prev) => prev.filter((item) => item.id !== id));
-    toast.success("Notification deleted");
+    toast.success("Notification dismissed");
   };
 
   const handleClearAllNotifications = () => {
@@ -489,16 +502,24 @@ function Notifications() {
           )}
         </Button>
       </PopoverTrigger>
-      <PopoverContent align="end" className="w-[calc(100vw-2rem)] sm:w-80 p-0">
-        <div className="flex items-center justify-between border-b px-4 py-3">
-          <div className="font-semibold text-sm">Notifications</div>
+      <PopoverContent align="end" className="w-[calc(100vw-2rem)] sm:w-96 p-0 shadow-2xl rounded-2xl border">
+        {/* HEADER */}
+        <div className="flex items-center justify-between border-b px-4 py-3 bg-muted/30">
+          <div className="font-semibold text-sm flex items-center gap-2">
+            <Bell className="h-4 w-4 text-primary" /> Notifications
+            {unreadCount > 0 && (
+              <Badge variant="secondary" className="px-1.5 py-0 text-[10px]">
+                {unreadCount} new
+              </Badge>
+            )}
+          </div>
           <div className="flex items-center gap-2">
             {notifications.length > 0 && (
               <button
                 type="button"
                 onClick={handleClearAllNotifications}
                 title="Clear all notifications"
-                className="text-xs text-destructive hover:underline flex items-center gap-1 cursor-pointer"
+                className="text-xs text-destructive hover:underline flex items-center gap-1 cursor-pointer font-medium"
               >
                 <Trash2 className="h-3.5 w-3.5" /> Clear All
               </button>
@@ -508,7 +529,7 @@ function Notifications() {
                 type="button"
                 onClick={handleMarkAllRead}
                 title="Mark all as read"
-                className="text-xs text-primary hover:underline flex items-center gap-1 cursor-pointer"
+                className="text-xs text-primary hover:underline flex items-center gap-1 cursor-pointer font-medium"
               >
                 <CheckCheck className="h-3.5 w-3.5" /> Read
               </button>
@@ -516,13 +537,50 @@ function Notifications() {
           </div>
         </div>
 
+        {/* CATEGORY TABS */}
+        <div className="flex items-center gap-1 border-b px-2 py-1.5 bg-muted/20 text-xs">
+          <button
+            type="button"
+            onClick={() => setActiveTab("all")}
+            className={cn(
+              "px-2.5 py-1 rounded-md transition font-medium cursor-pointer",
+              activeTab === "all" ? "bg-background text-foreground shadow-xs font-semibold" : "text-muted-foreground hover:text-foreground"
+            )}
+          >
+            All ({notifications.length})
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveTab("urgent")}
+            className={cn(
+              "px-2.5 py-1 rounded-md transition font-medium cursor-pointer",
+              activeTab === "urgent" ? "bg-background text-foreground shadow-xs font-semibold" : "text-muted-foreground hover:text-foreground"
+            )}
+          >
+            Urgent ({notifications.filter(n => n.category === "urgent").length})
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveTab("requests")}
+            className={cn(
+              "px-2.5 py-1 rounded-md transition font-medium cursor-pointer",
+              activeTab === "requests" ? "bg-background text-foreground shadow-xs font-semibold" : "text-muted-foreground hover:text-foreground"
+            )}
+          >
+            Requests ({notifications.filter(n => n.category === "requests").length})
+          </button>
+        </div>
+
+        {/* LIST */}
         <div className="max-h-80 overflow-y-auto">
-          {notifications.length === 0 ? (
-            <div className="p-6 text-center text-xs text-muted-foreground">
-              No notifications. Your inbox is empty.
+          {filteredNotifications.length === 0 ? (
+            <div className="p-8 text-center text-xs text-muted-foreground space-y-1">
+              <Bell className="h-6 w-6 mx-auto text-muted-foreground/40 mb-2" />
+              <div className="font-medium text-foreground">No notifications here</div>
+              <div>Your inbox is clean for this category.</div>
             </div>
           ) : (
-            notifications.map((n) => (
+            filteredNotifications.map((n) => (
               <div
                 key={n.id}
                 className={cn(
@@ -545,14 +603,17 @@ function Notifications() {
                     {n.title}
                   </div>
                   <div className="text-xs text-muted-foreground mt-0.5 truncate">{n.sub}</div>
-                  <div className="text-[10px] text-muted-foreground/70 mt-1">{n.time}</div>
+                  <div className="text-[10px] text-muted-foreground/70 mt-1 flex items-center gap-2">
+                    <span>{n.time}</span>
+                    <span className="text-primary font-medium group-hover:underline">Click to view →</span>
+                  </div>
                 </Link>
 
                 <button
                   type="button"
                   onClick={(e) => handleDeleteNotification(n.id, e)}
-                  title="Delete notification"
-                  className="absolute right-3 top-3 opacity-0 group-hover:opacity-100 grid h-6 w-6 place-items-center rounded text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition cursor-pointer"
+                  title="Dismiss notification"
+                  className="absolute right-3 top-3 opacity-0 group-hover:opacity-100 grid h-6 w-6 place-items-center rounded-md text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition cursor-pointer"
                 >
                   <X className="h-3.5 w-3.5" />
                 </button>
@@ -560,9 +621,9 @@ function Notifications() {
             ))
           )}
         </div>
-        <div className="border-t p-2">
-          <Button asChild variant="ghost" className="w-full text-sm">
-            <Link href="/alerts">View all alerts</Link>
+        <div className="border-t p-2 bg-muted/20">
+          <Button asChild variant="ghost" className="w-full text-xs font-semibold">
+            <Link href="/alerts">View full alerts dashboard →</Link>
           </Button>
         </div>
       </PopoverContent>
@@ -683,11 +744,11 @@ export function AppShell({ children }) {
 
   return (
     <div className="flex min-h-screen w-full bg-muted/30">
-      <aside className={cn("hidden lg:flex shrink-0 flex-col sticky top-0 h-screen border-r border-sidebar-border bg-sidebar z-40 transition-all duration-200", collapsed ? "w-16" : "w-64")}>
+      <aside className={cn("hidden lg:flex shrink-0 flex-col sticky top-0 h-screen border-r border-sidebar-border bg-sidebar z-40 transition-all duration-300 ease-in-out", collapsed ? "w-16" : "w-64")}>
         <SidebarContent collapsed={collapsed} onToggleCollapse={() => setCollapsed(!collapsed)} />
       </aside>
 
-      <div className="flex min-w-0 flex-1 flex-col">
+      <div className="flex min-w-0 flex-1 flex-col transition-all duration-300 ease-in-out">
         <header className="sticky top-0 z-30 flex h-16 items-center gap-2 sm:gap-3 border-b bg-background/80 px-3 sm:px-6 backdrop-blur">
           <Sheet open={open} onOpenChange={setOpen}>
             <SheetTrigger asChild>
@@ -700,13 +761,13 @@ export function AppShell({ children }) {
             </SheetContent>
           </Sheet>
 
-          {/* SIDEBAR COLLAPSE TOGGLE BUTTON */}
+          {/* SIDEBAR COLLAPSE / FOLD BACK TOGGLE BUTTON */}
           <Button
             variant="ghost"
             size="icon"
             onClick={() => setCollapsed(!collapsed)}
-            title={collapsed ? "Expand sidebar (Full view)" : "Collapse sidebar (Compact view)"}
-            className="hidden lg:flex shrink-0 text-muted-foreground hover:text-foreground"
+            title={collapsed ? "Expand sidebar (Full view)" : "Fold back sidebar (Full canvas workspace)"}
+            className="hidden lg:flex shrink-0 text-muted-foreground hover:text-foreground transition-transform"
           >
             {collapsed ? <PanelLeftOpen className="h-5 w-5 text-primary" /> : <PanelLeftClose className="h-5 w-5" />}
           </Button>

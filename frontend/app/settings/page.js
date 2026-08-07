@@ -10,8 +10,9 @@ import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Sun, Moon, Laptop, Save, Download, CheckCircle2, Building2, Bell, Shield, Database, Coins } from "lucide-react";
+import { Sun, Moon, Laptop, Save, Download, CheckCircle2, Building2, Bell, Shield, Database, Coins, RefreshCw } from "lucide-react";
 import { applyTheme, getAppSettings, getStoredTheme, saveAppSettings, getCurrencySymbol } from "@/lib/theme";
+import { getProducts, updateProduct } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 
@@ -49,6 +50,8 @@ export default function SettingsPage() {
     exportLogsWeekly: false,
   });
 
+  const [applyingThreshold, setApplyingThreshold] = useState(false);
+
   useEffect(() => {
     const loaded = getAppSettings();
     const activeTheme = getStoredTheme();
@@ -73,8 +76,33 @@ export default function SettingsPage() {
     saveAppSettings(settings);
     const symbol = getCurrencySymbol();
     toast.success("Settings saved successfully! ✅", {
-      description: `Active currency set to "${symbol}". All pages updated.`,
+      description: `Active currency set to "${symbol}". Workspace preferences updated.`,
     });
+  };
+
+  const handleApplyThresholdToAllProducts = async () => {
+    const targetThreshold = Number(settings.lowStockThreshold || 20);
+    setApplyingThreshold(true);
+    try {
+      const prods = await getProducts();
+      if (prods && Array.isArray(prods) && prods.length > 0) {
+        let updatedCount = 0;
+        for (const p of prods) {
+          await updateProduct(p.id, {
+            ...p,
+            threshold: targetThreshold,
+          });
+          updatedCount++;
+        }
+        saveAppSettings(settings);
+        toast.success(`Applied default threshold (${targetThreshold} units) to all ${updatedCount} products! 🎉`);
+      } else {
+        toast.info("No products found to update.");
+      }
+    } catch (e) {
+      toast.error("Failed to apply threshold to products.");
+    }
+    setApplyingThreshold(false);
   };
 
   const handleDownloadBackup = () => {
@@ -102,12 +130,12 @@ export default function SettingsPage() {
       />
 
       <Tabs defaultValue="general" className="w-full">
-        {/* RESPONSIVE TABS HEADER (Scrollable on mobile, grid on desktop) */}
+        {/* RESPONSIVE TABS HEADER */}
         <div className="overflow-x-auto pb-2 scrollbar-thin scrollbar-thumb-muted">
           <TabsList className="inline-flex sm:grid sm:grid-cols-5 w-max sm:w-full min-w-full h-auto p-1 border bg-muted/40 rounded-xl gap-1">
             <TabsTrigger value="general" className="py-2 text-xs sm:text-sm">Company & Currency</TabsTrigger>
             <TabsTrigger value="appearance" className="py-2 text-xs sm:text-sm">Appearance</TabsTrigger>
-            <TabsTrigger value="inventory" className="py-2 text-xs sm:text-sm">Inventory</TabsTrigger>
+            <TabsTrigger value="inventory" className="py-2 text-xs sm:text-sm">Inventory Defaults</TabsTrigger>
             <TabsTrigger value="notifications" className="py-2 text-xs sm:text-sm">Notifications</TabsTrigger>
             <TabsTrigger value="backup" className="py-2 text-xs sm:text-sm">Backup</TabsTrigger>
           </TabsList>
@@ -274,29 +302,55 @@ export default function SettingsPage() {
           <Card>
             <CardHeader className="p-4 sm:p-6">
               <CardTitle className="text-base flex items-center gap-2">
-                <Shield className="h-4 w-4 text-primary" /> Inventory Settings
+                <Shield className="h-4 w-4 text-primary" /> Inventory Defaults & Low Stock Threshold
               </CardTitle>
+              <CardDescription>
+                Set the default low stock threshold and apply it across your entire product catalog.
+              </CardDescription>
             </CardHeader>
             <CardContent className="p-4 sm:p-6 pt-0 sm:pt-0 grid gap-4 sm:grid-cols-2">
-              <div className="space-y-1.5">
-                <Label>Default Low Stock Threshold</Label>
-                <Input
-                  type="number"
-                  value={settings.lowStockThreshold}
-                  onChange={(e) => handleFieldChange("lowStockThreshold", Number(e.target.value))}
-                />
+              <div className="space-y-1.5 sm:col-span-2 rounded-xl border bg-primary/5 p-4">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                  <div>
+                    <Label className="text-sm font-semibold">Default Low Stock Threshold (per Product)</Label>
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      Products below this unit balance trigger low stock warning notifications.
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Input
+                      type="number"
+                      className="w-24 bg-background font-semibold"
+                      value={settings.lowStockThreshold}
+                      onChange={(e) => handleFieldChange("lowStockThreshold", Number(e.target.value))}
+                    />
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      size="sm"
+                      onClick={handleApplyThresholdToAllProducts}
+                      disabled={applyingThreshold}
+                      className="shrink-0"
+                    >
+                      <RefreshCw className={cn("mr-1.5 h-3.5 w-3.5", applyingThreshold && "animate-spin")} />
+                      {applyingThreshold ? "Applying..." : "Apply to All Products"}
+                    </Button>
+                  </div>
+                </div>
               </div>
-              <div className="space-y-1.5">
+
+              <div className="space-y-1.5 sm:col-span-2">
                 <Label>SKU Prefix</Label>
                 <Input
                   value={settings.skuPrefix}
                   onChange={(e) => handleFieldChange("skuPrefix", e.target.value)}
                 />
               </div>
+
               <div className="sm:col-span-2 space-y-1 pt-2">
                 <ToggleRow
                   title="Auto-generate SKU"
-                  description="Assign a SKU automatically when creating a new product."
+                  description="Assign a non-colliding SKU automatically when creating a new product."
                   checked={settings.autoGenerateSku}
                   onChange={(v) => handleFieldChange("autoGenerateSku", v)}
                 />
