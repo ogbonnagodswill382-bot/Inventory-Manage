@@ -15,7 +15,7 @@ import { ProductIcon, PRODUCT_ICON_OPTIONS } from "@/components/product-icon";
 import { getProducts, getCategories, getSuppliers, createProduct, updateProduct, deleteProduct } from "@/lib/api";
 import { getAuthUser } from "@/lib/auth";
 import { exportToCSV } from "@/lib/export";
-import { formatCurrency, getCurrencySymbol } from "@/lib/theme";
+import { formatCurrency, getCurrencySymbol, getAppSettings } from "@/lib/theme";
 import { toast } from "sonner";
 
 export default function ProductsPage() {
