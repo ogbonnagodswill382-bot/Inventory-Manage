@@ -29,6 +29,10 @@ import {
   ArrowRight,
   ChevronsLeft,
   ChevronsRight,
+  AlertTriangle,
+  Info,
+  ExternalLink,
+  ShieldAlert,
 } from "lucide-react";
 import { useState, useEffect, useRef } from "react";
 import { cn } from "@/lib/utils";
@@ -53,6 +57,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { toast } from "sonner";
 
@@ -69,6 +74,70 @@ const nav = [
   { href: "/users", label: "Users", icon: Users, group: "Admin" },
   { href: "/settings", label: "Settings", icon: Settings, group: "Admin" },
 ];
+
+function getStoredClearedNotifications() {
+  if (typeof window === "undefined") return [];
+  try {
+    const raw = localStorage.getItem("stockflow_cleared_notifications");
+    return raw ? JSON.parse(raw) : [];
+  } catch {
+    return [];
+  }
+}
+
+function addStoredClearedNotification(id) {
+  if (typeof window === "undefined") return;
+  try {
+    const list = getStoredClearedNotifications();
+    if (!list.includes(id)) {
+      list.push(id);
+      localStorage.setItem("stockflow_cleared_notifications", JSON.stringify(list));
+    }
+  } catch {}
+}
+
+function addAllStoredClearedNotifications(ids) {
+  if (typeof window === "undefined") return;
+  try {
+    const list = getStoredClearedNotifications();
+    ids.forEach((id) => {
+      if (!list.includes(id)) list.push(id);
+    });
+    localStorage.setItem("stockflow_cleared_notifications", JSON.stringify(list));
+  } catch {}
+}
+
+function getStoredReadNotifications() {
+  if (typeof window === "undefined") return [];
+  try {
+    const raw = localStorage.getItem("stockflow_read_notifications");
+    return raw ? JSON.parse(raw) : [];
+  } catch {
+    return [];
+  }
+}
+
+function addStoredReadNotification(id) {
+  if (typeof window === "undefined") return;
+  try {
+    const list = getStoredReadNotifications();
+    if (!list.includes(id)) {
+      list.push(id);
+      localStorage.setItem("stockflow_read_notifications", JSON.stringify(list));
+    }
+  } catch {}
+}
+
+function addAllStoredReadNotifications(ids) {
+  if (typeof window === "undefined") return;
+  try {
+    const list = getStoredReadNotifications();
+    ids.forEach((id) => {
+      if (!list.includes(id)) list.push(id);
+    });
+    localStorage.setItem("stockflow_read_notifications", JSON.stringify(list));
+  } catch {}
+}
 
 function SidebarContent({ onNavigate, collapsed = false, onToggleCollapse }) {
   const pathname = usePathname();
@@ -88,7 +157,7 @@ function SidebarContent({ onNavigate, collapsed = false, onToggleCollapse }) {
 
   return (
     <div className={cn("flex h-full flex-col bg-sidebar text-sidebar-foreground select-none transition-all duration-300", collapsed ? "w-16" : "w-64")}>
-      {/* Brand Header & Single Fold Back Toggle */}
+      {/* Brand Header */}
       <div className={cn("flex items-center justify-between py-4 border-b border-sidebar-border/80", collapsed ? "px-3 flex-col gap-3" : "px-5")}>
         <Link href="/" onClick={onNavigate} className="flex items-center gap-3 min-w-0 group">
           <div className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-gradient-to-br from-primary to-primary/80 text-primary-foreground shadow-md shadow-primary/20 group-hover:scale-105 transition-transform">
@@ -107,7 +176,6 @@ function SidebarContent({ onNavigate, collapsed = false, onToggleCollapse }) {
           )}
         </Link>
 
-        {/* SINGLE FOLD BACK TOGGLE BUTTON */}
         {onToggleCollapse && (
           <button
             type="button"
@@ -388,14 +456,19 @@ function GlobalSearch() {
 }
 
 function Notifications() {
+  const router = useRouter();
   const [notifications, setNotifications] = useState([]);
-  const [readCount, setReadCount] = useState(0);
+  const [readIds, setReadIds] = useState([]);
   const [activeTab, setActiveTab] = useState("all");
+  const [selectedNotification, setSelectedNotification] = useState(null);
 
   useEffect(() => {
     async function loadNotifications() {
       const activeUser = getAuthUser();
       const isAdmin = activeUser?.role === "Administrator";
+      const clearedList = getStoredClearedNotifications();
+      const readList = getStoredReadNotifications();
+      setReadIds(readList);
 
       const [prods, moves, contactReqs] = await Promise.all([
         getProducts(),
@@ -408,55 +481,81 @@ function Notifications() {
       // Admin Contact Requests Notifications
       if (isAdmin && contactReqs && Array.isArray(contactReqs)) {
         contactReqs.forEach((r) => {
-          list.push({
-            id: `contact-${r.id}`,
-            title: `Access Request: ${r.name}`,
-            sub: `${r.email} — "${r.message}"`,
-            time: r.date || "Just now",
-            type: "contact",
-            category: "requests",
-            link: `/users?name=${encodeURIComponent(r.name)}&email=${encodeURIComponent(r.email)}`,
-          });
+          const id = `contact-${r.id}`;
+          if (!clearedList.includes(id)) {
+            list.push({
+              id,
+              title: `Staff Access Request: ${r.name}`,
+              sub: `${r.email} — "${r.message}"`,
+              message: r.message,
+              applicantName: r.name,
+              applicantEmail: r.email,
+              time: r.date || "Just now",
+              type: "contact",
+              category: "requests",
+              link: `/users?name=${encodeURIComponent(r.name)}&email=${encodeURIComponent(r.email)}`,
+            });
+          }
         });
       }
 
       if (prods && Array.isArray(prods)) {
         prods.forEach((p) => {
           if (p.stock === 0) {
-            list.push({
-              id: `out-${p.id}`,
-              title: `${p.name} is out of stock!`,
-              sub: `SKU: ${p.sku} · 0 units remaining (Threshold: ${p.threshold})`,
-              time: "Urgent",
-              type: "danger",
-              category: "urgent",
-              link: `/stock-in?product=${p.id}`,
-            });
+            const id = `out-${p.id}`;
+            if (!clearedList.includes(id)) {
+              list.push({
+                id,
+                title: `${p.name} is out of stock!`,
+                sub: `SKU: ${p.sku} · 0 units remaining (Threshold: ${p.threshold})`,
+                message: `Critical Inventory Alert: "${p.name}" (SKU: ${p.sku}) has reached 0 units in warehouse stock. Reorder minimum threshold is ${p.threshold} units.`,
+                productName: p.name,
+                sku: p.sku,
+                stock: p.stock,
+                threshold: p.threshold,
+                time: "Urgent",
+                type: "danger",
+                category: "urgent",
+                link: `/stock-in?product=${p.id}`,
+              });
+            }
           } else if (p.stock <= p.threshold) {
-            list.push({
-              id: `low-${p.id}`,
-              title: `${p.name} low stock warning`,
-              sub: `${p.stock} units remaining (Threshold: ${p.threshold})`,
-              time: "Warning",
-              type: "warning",
-              category: "urgent",
-              link: `/stock-in?product=${p.id}`,
-            });
+            const id = `low-${p.id}`;
+            if (!clearedList.includes(id)) {
+              list.push({
+                id,
+                title: `${p.name} low stock warning`,
+                sub: `${p.stock} units remaining (Threshold: ${p.threshold})`,
+                message: `Low Stock Warning: "${p.name}" (SKU: ${p.sku}) currently has ${p.stock} units remaining, which is below or equal to your warning threshold of ${p.threshold} units.`,
+                productName: p.name,
+                sku: p.sku,
+                stock: p.stock,
+                threshold: p.threshold,
+                time: "Warning",
+                type: "warning",
+                category: "urgent",
+                link: `/stock-in?product=${p.id}`,
+              });
+            }
           }
         });
       }
 
       if (moves && Array.isArray(moves)) {
         moves.slice(0, 3).forEach((m) => {
-          list.push({
-            id: `move-${m.id}`,
-            title: `Stock ${m.type === "in" ? "Received (+)" : "Dispatched (-)"}`,
-            sub: `${m.product_name} · ${m.quantity} units by ${m.user}`,
-            time: m.date || "Recently",
-            type: m.type === "in" ? "success" : "info",
-            category: "activity",
-            link: "/stock-history",
-          });
+          const id = `move-${m.id}`;
+          if (!clearedList.includes(id)) {
+            list.push({
+              id,
+              title: `Stock ${m.type === "in" ? "Received (+)" : "Dispatched (-)"}`,
+              sub: `${m.product_name} · ${m.quantity} units by ${m.user}`,
+              message: `Audit Record: ${m.quantity} units of "${m.product_name}" were ${m.type === "in" ? "received into stock" : "dispatched out of stock"} by ${m.user}. Reference: ${m.reference || 'PO/SO'}.`,
+              time: m.date || "Recently",
+              type: m.type === "in" ? "success" : "info",
+              category: "activity",
+              link: "/stock-history",
+            });
+          }
         });
       }
 
@@ -465,7 +564,8 @@ function Notifications() {
     loadNotifications();
   }, []);
 
-  const unreadCount = Math.max(0, notifications.length - readCount);
+  const unreadNotifications = notifications.filter((n) => !readIds.includes(n.id));
+  const unreadCount = unreadNotifications.length;
 
   const filteredNotifications = notifications.filter((n) => {
     if (activeTab === "urgent") return n.category === "urgent";
@@ -475,159 +575,247 @@ function Notifications() {
   });
 
   const handleMarkAllRead = () => {
-    setReadCount(notifications.length);
+    const allIds = notifications.map((n) => n.id);
+    addAllStoredReadNotifications(allIds);
+    setReadIds(allIds);
     toast.success("All notifications marked as read");
   };
 
   const handleDeleteNotification = (id, e) => {
-    e.stopPropagation();
-    e.preventDefault();
+    e?.stopPropagation();
+    e?.preventDefault();
+    addStoredClearedNotification(id);
     setNotifications((prev) => prev.filter((item) => item.id !== id));
-    toast.success("Notification dismissed");
+    if (selectedNotification?.id === id) setSelectedNotification(null);
+    toast.success("Notification deleted permanently");
   };
 
   const handleClearAllNotifications = () => {
+    const allIds = notifications.map((n) => n.id);
+    addAllStoredClearedNotifications(allIds);
+    addAllStoredReadNotifications(allIds);
     setNotifications([]);
-    setReadCount(0);
-    toast.success("All notifications cleared");
+    setReadIds(allIds);
+    setSelectedNotification(null);
+    toast.success("All notifications cleared permanently");
+  };
+
+  const handleOpenNotificationDetail = (n) => {
+    addStoredReadNotification(n.id);
+    setReadIds((prev) => (prev.includes(n.id) ? prev : [...prev, n.id]));
+    setSelectedNotification(n);
+  };
+
+  const handleResolveAction = (n) => {
+    setSelectedNotification(null);
+    router.push(n.link);
   };
 
   return (
-    <Popover>
-      <PopoverTrigger asChild>
-        <Button variant="ghost" size="icon" className="relative shrink-0">
-          <Bell className="h-5 w-5" />
-          {unreadCount > 0 && (
-            <span className="absolute right-2 top-2 h-2 w-2 rounded-full bg-destructive ring-2 ring-background animate-pulse" />
-          )}
-        </Button>
-      </PopoverTrigger>
-      <PopoverContent align="end" className="w-[calc(100vw-2rem)] sm:w-96 p-0 shadow-2xl rounded-2xl border">
-        {/* HEADER */}
-        <div className="flex items-center justify-between border-b px-4 py-3 bg-muted/30">
-          <div className="font-semibold text-sm flex items-center gap-2">
-            <Bell className="h-4 w-4 text-primary" /> Notifications
+    <>
+      <Popover>
+        <PopoverTrigger asChild>
+          <Button variant="ghost" size="icon" className="relative shrink-0">
+            <Bell className="h-5 w-5" />
             {unreadCount > 0 && (
-              <Badge variant="secondary" className="px-1.5 py-0 text-[10px]">
-                {unreadCount} new
-              </Badge>
+              <span className="absolute right-2 top-2 h-2 w-2 rounded-full bg-destructive ring-2 ring-background animate-pulse" />
             )}
-          </div>
-          <div className="flex items-center gap-2">
-            {notifications.length > 0 && (
-              <button
-                type="button"
-                onClick={handleClearAllNotifications}
-                title="Clear all notifications"
-                className="text-xs text-destructive hover:underline flex items-center gap-1 cursor-pointer font-medium"
-              >
-                <Trash2 className="h-3.5 w-3.5" /> Clear All
-              </button>
-            )}
-            {unreadCount > 0 && (
-              <button
-                type="button"
-                onClick={handleMarkAllRead}
-                title="Mark all as read"
-                className="text-xs text-primary hover:underline flex items-center gap-1 cursor-pointer font-medium"
-              >
-                <CheckCheck className="h-3.5 w-3.5" /> Read
-              </button>
-            )}
-          </div>
-        </div>
-
-        {/* CATEGORY TABS */}
-        <div className="flex items-center gap-1 border-b px-2 py-1.5 bg-muted/20 text-xs">
-          <button
-            type="button"
-            onClick={() => setActiveTab("all")}
-            className={cn(
-              "px-2.5 py-1 rounded-md transition font-medium cursor-pointer",
-              activeTab === "all" ? "bg-background text-foreground shadow-xs font-semibold" : "text-muted-foreground hover:text-foreground"
-            )}
-          >
-            All ({notifications.length})
-          </button>
-          <button
-            type="button"
-            onClick={() => setActiveTab("urgent")}
-            className={cn(
-              "px-2.5 py-1 rounded-md transition font-medium cursor-pointer",
-              activeTab === "urgent" ? "bg-background text-foreground shadow-xs font-semibold" : "text-muted-foreground hover:text-foreground"
-            )}
-          >
-            Urgent ({notifications.filter(n => n.category === "urgent").length})
-          </button>
-          <button
-            type="button"
-            onClick={() => setActiveTab("requests")}
-            className={cn(
-              "px-2.5 py-1 rounded-md transition font-medium cursor-pointer",
-              activeTab === "requests" ? "bg-background text-foreground shadow-xs font-semibold" : "text-muted-foreground hover:text-foreground"
-            )}
-          >
-            Requests ({notifications.filter(n => n.category === "requests").length})
-          </button>
-        </div>
-
-        {/* LIST */}
-        <div className="max-h-80 overflow-y-auto">
-          {filteredNotifications.length === 0 ? (
-            <div className="p-8 text-center text-xs text-muted-foreground space-y-1">
-              <Bell className="h-6 w-6 mx-auto text-muted-foreground/40 mb-2" />
-              <div className="font-medium text-foreground">No notifications here</div>
-              <div>Your inbox is clean for this category.</div>
+          </Button>
+        </PopoverTrigger>
+        <PopoverContent align="end" className="w-[calc(100vw-2rem)] sm:w-96 p-0 shadow-2xl rounded-2xl border">
+          {/* HEADER */}
+          <div className="flex items-center justify-between border-b px-4 py-3 bg-muted/30">
+            <div className="font-semibold text-sm flex items-center gap-2">
+              <Bell className="h-4 w-4 text-primary" /> Notifications
+              {unreadCount > 0 && (
+                <Badge variant="secondary" className="px-1.5 py-0 text-[10px]">
+                  {unreadCount} unread
+                </Badge>
+              )}
             </div>
-          ) : (
-            filteredNotifications.map((n) => (
-              <div
-                key={n.id}
-                className={cn(
-                  "group relative flex items-start gap-3 border-b px-4 py-3 last:border-0 hover:bg-muted/50 transition",
-                  n.type === "contact" && "bg-primary/5 border-l-2 border-l-primary"
-                )}
-              >
-                <span className={cn(
-                  "mt-1.5 h-2 w-2 shrink-0 rounded-full",
-                  n.type === "contact" && "bg-primary",
-                  n.type === "danger" && "bg-destructive",
-                  n.type === "warning" && "bg-warning",
-                  n.type === "info" && "bg-info",
-                  n.type === "success" && "bg-success"
-                )} />
-                
-                <Link href={n.link} className="min-w-0 flex-1 pr-4 cursor-pointer">
-                  <div className="text-sm font-medium truncate flex items-center gap-1.5">
-                    {n.type === "contact" && <UserPlus className="h-3.5 w-3.5 text-primary" />}
-                    {n.title}
-                  </div>
-                  <div className="text-xs text-muted-foreground mt-0.5 truncate">{n.sub}</div>
-                  <div className="text-[10px] text-muted-foreground/70 mt-1 flex items-center gap-2">
-                    <span>{n.time}</span>
-                    <span className="text-primary font-medium group-hover:underline">Click to view →</span>
-                  </div>
-                </Link>
-
+            <div className="flex items-center gap-2">
+              {notifications.length > 0 && (
                 <button
                   type="button"
-                  onClick={(e) => handleDeleteNotification(n.id, e)}
-                  title="Dismiss notification"
-                  className="absolute right-3 top-3 opacity-0 group-hover:opacity-100 grid h-6 w-6 place-items-center rounded-md text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition cursor-pointer"
+                  onClick={handleClearAllNotifications}
+                  title="Clear all notifications permanently"
+                  className="text-xs text-destructive hover:underline flex items-center gap-1 cursor-pointer font-medium"
                 >
-                  <X className="h-3.5 w-3.5" />
+                  <Trash2 className="h-3.5 w-3.5" /> Clear All
                 </button>
+              )}
+              {unreadCount > 0 && (
+                <button
+                  type="button"
+                  onClick={handleMarkAllRead}
+                  title="Mark all as read"
+                  className="text-xs text-primary hover:underline flex items-center gap-1 cursor-pointer font-medium"
+                >
+                  <CheckCheck className="h-3.5 w-3.5" /> Read All
+                </button>
+              )}
+            </div>
+          </div>
+
+          {/* CATEGORY TABS */}
+          <div className="flex items-center gap-1 border-b px-2 py-1.5 bg-muted/20 text-xs">
+            <button
+              type="button"
+              onClick={() => setActiveTab("all")}
+              className={cn(
+                "px-2.5 py-1 rounded-md transition font-medium cursor-pointer",
+                activeTab === "all" ? "bg-background text-foreground shadow-xs font-semibold" : "text-muted-foreground hover:text-foreground"
+              )}
+            >
+              All ({notifications.length})
+            </button>
+            <button
+              type="button"
+              onClick={() => setActiveTab("urgent")}
+              className={cn(
+                "px-2.5 py-1 rounded-md transition font-medium cursor-pointer",
+                activeTab === "urgent" ? "bg-background text-foreground shadow-xs font-semibold" : "text-muted-foreground hover:text-foreground"
+              )}
+            >
+              Urgent ({notifications.filter(n => n.category === "urgent").length})
+            </button>
+            <button
+              type="button"
+              onClick={() => setActiveTab("requests")}
+              className={cn(
+                "px-2.5 py-1 rounded-md transition font-medium cursor-pointer",
+                activeTab === "requests" ? "bg-background text-foreground shadow-xs font-semibold" : "text-muted-foreground hover:text-foreground"
+              )}
+            >
+              Requests ({notifications.filter(n => n.category === "requests").length})
+            </button>
+          </div>
+
+          {/* LIST */}
+          <div className="max-h-80 overflow-y-auto">
+            {filteredNotifications.length === 0 ? (
+              <div className="p-8 text-center text-xs text-muted-foreground space-y-1">
+                <Bell className="h-6 w-6 mx-auto text-muted-foreground/40 mb-2" />
+                <div className="font-medium text-foreground">No notifications here</div>
+                <div>Your inbox is clean for this category.</div>
               </div>
-            ))
-          )}
-        </div>
-        <div className="border-t p-2 bg-muted/20">
-          <Button asChild variant="ghost" className="w-full text-xs font-semibold">
-            <Link href="/alerts">View full alerts dashboard →</Link>
-          </Button>
-        </div>
-      </PopoverContent>
-    </Popover>
+            ) : (
+              filteredNotifications.map((n) => {
+                const isRead = readIds.includes(n.id);
+                return (
+                  <div
+                    key={n.id}
+                    onClick={() => handleOpenNotificationDetail(n)}
+                    className={cn(
+                      "group relative flex items-start gap-3 border-b px-4 py-3 last:border-0 hover:bg-muted/60 transition cursor-pointer",
+                      !isRead && "bg-primary/5 font-semibold",
+                      n.type === "contact" && "border-l-2 border-l-primary"
+                    )}
+                  >
+                    <span className={cn(
+                      "mt-1.5 h-2 w-2 shrink-0 rounded-full",
+                      n.type === "contact" && "bg-primary",
+                      n.type === "danger" && "bg-destructive",
+                      n.type === "warning" && "bg-warning",
+                      n.type === "info" && "bg-info",
+                      n.type === "success" && "bg-success"
+                    )} />
+                    
+                    <div className="min-w-0 flex-1 pr-4">
+                      <div className="text-sm font-medium truncate flex items-center gap-1.5 text-foreground">
+                        {n.type === "contact" && <UserPlus className="h-3.5 w-3.5 text-primary" />}
+                        {n.title}
+                        {!isRead && (
+                          <span className="h-1.5 w-1.5 rounded-full bg-primary inline-block" />
+                        )}
+                      </div>
+                      <div className="text-xs text-muted-foreground mt-0.5 truncate">{n.sub}</div>
+                      <div className="text-[10px] text-muted-foreground/70 mt-1 flex items-center gap-2">
+                        <span>{n.time}</span>
+                        <span className="text-primary font-medium group-hover:underline">Open message →</span>
+                      </div>
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={(e) => handleDeleteNotification(n.id, e)}
+                      title="Delete notification"
+                      className="absolute right-3 top-3 opacity-0 group-hover:opacity-100 grid h-6 w-6 place-items-center rounded-md text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition cursor-pointer"
+                    >
+                      <X className="h-3.5 w-3.5" />
+                    </button>
+                  </div>
+                );
+              })
+            )}
+          </div>
+          <div className="border-t p-2 bg-muted/20">
+            <Button asChild variant="ghost" className="w-full text-xs font-semibold">
+              <Link href="/alerts">View full alerts dashboard →</Link>
+            </Button>
+          </div>
+        </PopoverContent>
+      </Popover>
+
+      {/* FULL NOTIFICATION MESSAGE DETAIL DIALOG MODAL */}
+      <Dialog open={!!selectedNotification} onOpenChange={(v) => !v && setSelectedNotification(null)}>
+        {selectedNotification && (
+          <DialogContent className="max-w-md">
+            <DialogHeader>
+              <div className="flex items-center gap-2">
+                {selectedNotification.type === "contact" && <UserPlus className="h-5 w-5 text-primary" />}
+                {selectedNotification.type === "danger" && <ShieldAlert className="h-5 w-5 text-destructive" />}
+                {selectedNotification.type === "warning" && <AlertTriangle className="h-5 w-5 text-warning" />}
+                {selectedNotification.type === "info" && <Info className="h-5 w-5 text-info" />}
+                {selectedNotification.type === "success" && <CheckCheck className="h-5 w-5 text-success" />}
+                <DialogTitle className="text-base font-semibold">{selectedNotification.title}</DialogTitle>
+              </div>
+              <DialogDescription className="text-xs text-muted-foreground mt-1">
+                Received: {selectedNotification.time}
+              </DialogDescription>
+            </DialogHeader>
+
+            <div className="py-3 space-y-3 text-sm">
+              <div className="rounded-xl border bg-muted/30 p-4 space-y-2">
+                <div className="font-semibold text-xs text-muted-foreground uppercase tracking-wider">
+                  Issue / Message Detail
+                </div>
+                <p className="text-sm leading-relaxed text-foreground whitespace-pre-wrap">
+                  {selectedNotification.message}
+                </p>
+              </div>
+
+              {selectedNotification.applicantEmail && (
+                <div className="rounded-lg border p-3 text-xs space-y-1 bg-primary/5 border-primary/20">
+                  <div className="font-semibold text-primary">Applicant Contact Info:</div>
+                  <div>Name: <span className="font-medium text-foreground">{selectedNotification.applicantName}</span></div>
+                  <div>Email: <span className="font-medium text-foreground">{selectedNotification.applicantEmail}</span></div>
+                </div>
+              )}
+            </div>
+
+            <DialogFooter className="flex flex-wrap items-center justify-between gap-2 sm:justify-between">
+              <Button
+                variant="destructive"
+                size="sm"
+                onClick={() => handleDeleteNotification(selectedNotification.id)}
+              >
+                <Trash2 className="mr-1.5 h-3.5 w-3.5" /> Delete
+              </Button>
+
+              <div className="flex items-center gap-2">
+                <Button variant="outline" size="sm" onClick={() => setSelectedNotification(null)}>
+                  Close
+                </Button>
+                <Button size="sm" onClick={() => handleResolveAction(selectedNotification)}>
+                  <ExternalLink className="mr-1.5 h-3.5 w-3.5" /> Resolve Issue
+                </Button>
+              </div>
+            </DialogFooter>
+          </DialogContent>
+        )}
+      </Dialog>
+    </>
   );
 }
 
