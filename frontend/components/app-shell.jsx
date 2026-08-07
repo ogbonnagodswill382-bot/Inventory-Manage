@@ -27,9 +27,8 @@ import {
   X,
   UserPlus,
   ArrowRight,
-  PanelLeftClose,
-  PanelLeftOpen,
-  Filter,
+  ChevronsLeft,
+  ChevronsRight,
 } from "lucide-react";
 import { useState, useEffect, useRef } from "react";
 import { cn } from "@/lib/utils";
@@ -89,8 +88,8 @@ function SidebarContent({ onNavigate, collapsed = false, onToggleCollapse }) {
 
   return (
     <div className={cn("flex h-full flex-col bg-sidebar text-sidebar-foreground select-none transition-all duration-300", collapsed ? "w-16" : "w-64")}>
-      {/* Brand Header */}
-      <div className={cn("flex items-center justify-between py-4 border-b border-sidebar-border/80", collapsed ? "px-3" : "px-5")}>
+      {/* Brand Header & Single Fold Back Toggle */}
+      <div className={cn("flex items-center justify-between py-4 border-b border-sidebar-border/80", collapsed ? "px-3 flex-col gap-3" : "px-5")}>
         <Link href="/" onClick={onNavigate} className="flex items-center gap-3 min-w-0 group">
           <div className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-gradient-to-br from-primary to-primary/80 text-primary-foreground shadow-md shadow-primary/20 group-hover:scale-105 transition-transform">
             <Boxes className="h-5 w-5" />
@@ -108,14 +107,15 @@ function SidebarContent({ onNavigate, collapsed = false, onToggleCollapse }) {
           )}
         </Link>
 
+        {/* SINGLE FOLD BACK TOGGLE BUTTON */}
         {onToggleCollapse && (
           <button
             type="button"
             onClick={onToggleCollapse}
-            title={collapsed ? "Expand sidebar (Full View)" : "Fold back sidebar (Full Canvas View)"}
-            className="hidden lg:grid h-8 w-8 place-items-center rounded-lg text-muted-foreground hover:bg-sidebar-accent hover:text-sidebar-foreground transition cursor-pointer"
+            title={collapsed ? "Expand sidebar" : "Fold back sidebar"}
+            className="hidden lg:grid h-8 w-8 shrink-0 place-items-center rounded-xl bg-sidebar-accent/50 text-muted-foreground hover:bg-primary/10 hover:text-primary transition-all duration-200 cursor-pointer border border-sidebar-border/60 shadow-2xs"
           >
-            {collapsed ? <PanelLeftOpen className="h-4 w-4 text-primary" /> : <PanelLeftClose className="h-4 w-4" />}
+            {collapsed ? <ChevronsRight className="h-4 w-4 text-primary" /> : <ChevronsLeft className="h-4 w-4" />}
           </button>
         )}
       </div>
@@ -760,17 +760,6 @@ export function AppShell({ children }) {
               <SidebarContent onNavigate={() => setOpen(false)} />
             </SheetContent>
           </Sheet>
-
-          {/* SIDEBAR COLLAPSE / FOLD BACK TOGGLE BUTTON */}
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => setCollapsed(!collapsed)}
-            title={collapsed ? "Expand sidebar (Full view)" : "Fold back sidebar (Full canvas workspace)"}
-            className="hidden lg:flex shrink-0 text-muted-foreground hover:text-foreground transition-transform"
-          >
-            {collapsed ? <PanelLeftOpen className="h-5 w-5 text-primary" /> : <PanelLeftClose className="h-5 w-5" />}
-          </Button>
 
           <GlobalSearch />
 
