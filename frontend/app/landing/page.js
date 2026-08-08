@@ -54,8 +54,8 @@ export default function LandingPage() {
       a: "Yes! In Settings (/settings), you can select Naira (₦), Dollar ($), Euro (€), Pound (£), or type any custom currency symbol. Your entire app, inventory valuation, and PDF reports will immediately display in your chosen currency.",
     },
     {
-      q: "Will StockFlow work on my mobile phone or Samsung Galaxy Z Fold device?",
-      a: "Yes! StockFlow is 100% responsive and specially built to look great on mobile phones, tablets, and fold devices like the Samsung Galaxy Z Fold 5.",
+      q: "Will StockFlow work on any device?",
+      a: "Yes! StockFlow is 100% responsive and works seamlessly across all devices—including smartphones, tablets, laptops, desktop computers, and foldable displays.",
     },
   ];
 
