@@ -1,13 +1,15 @@
 from rest_framework import viewsets, status
 from rest_framework.views import APIView
 from rest_framework.response import Response
+from rest_framework.decorators import action
 from django.contrib.auth import authenticate
 from django.contrib.auth.models import User
 from django.db.models import F, Sum
-from .models import Category, Supplier, Product, StockMovement, UserProfile, ContactRequest
+from django.utils import timezone
+from .models import Category, Supplier, Product, StockMovement, BranchTransfer, UserProfile, ContactRequest
 from .serializers import (
     CategorySerializer, SupplierSerializer, ProductSerializer,
-    StockMovementSerializer, UserProfileSerializer
+    StockMovementSerializer, BranchTransferSerializer, UserProfileSerializer
 )
 
 class CategoryViewSet(viewsets.ModelViewSet):
@@ -62,6 +64,50 @@ class ProductViewSet(viewsets.ModelViewSet):
 class StockMovementViewSet(viewsets.ModelViewSet):
     queryset = StockMovement.objects.all().order_by('-id')
     serializer_class = StockMovementSerializer
+
+class BranchTransferViewSet(viewsets.ModelViewSet):
+    queryset = BranchTransfer.objects.all().order_by('-id')
+    serializer_class = BranchTransferSerializer
+
+    @action(detail=True, methods=['post'])
+    def approve_return(self, request, pk=None):
+        transfer = self.get_object()
+        if transfer.status == 'returned_to_stock':
+            return Response({'error': 'This return has already been approved and restocked into inventory.'}, status=400)
+
+        approved_by = request.data.get('approved_by', 'Administrator').strip()
+        notes = request.data.get('notes', '').strip()
+
+        # RESTOCK PRODUCT DIRECTLY BACK TO ITS SOURCE WAREHOUSE STOCK BALANCE!
+        product = transfer.product
+        product.stock += transfer.quantity
+        product.updated_at = 'just now'
+        product.save()
+
+        # Create Stock In Movement Audit Record
+        movement = StockMovement.objects.create(
+            product=product,
+            type='in',
+            quantity=transfer.quantity,
+            user=approved_by,
+            reference=f"RET-{transfer.id}",
+            notes=f"Returned from {transfer.destination} ({'Supplier' if transfer.type == 'supplier_return' else 'Branch'}). Approved by {approved_by}. {notes}".strip(),
+            balance=product.stock
+        )
+
+        transfer.status = 'returned_to_stock'
+        transfer.approved_by = approved_by
+        transfer.returned_at = timezone.now()
+        if notes:
+            transfer.notes = f"{transfer.notes or ''} | Return note: {notes}".strip()
+        transfer.save()
+
+        return Response({
+            'message': f'Approved & Restocked {transfer.quantity} units of "{product.name}" back into warehouse inventory!',
+            'transfer': BranchTransferSerializer(transfer).data,
+            'movement': StockMovementSerializer(movement).data,
+            'new_stock': product.stock
+        }, status=status.HTTP_200_OK)
 
 class UserProfileViewSet(viewsets.ModelViewSet):
     queryset = UserProfile.objects.all().order_by('-id')
@@ -204,6 +250,8 @@ class StockOutAPIView(APIView):
         user = request.data.get('user', 'Staff')
         reference = request.data.get('reference', '')
         notes = request.data.get('notes', '')
+        destination = request.data.get('destination', '').strip()
+        reason = request.data.get('reason', 'sale').strip()
 
         try:
             product = Product.objects.get(id=product_id)
@@ -226,6 +274,21 @@ class StockOutAPIView(APIView):
             notes=notes,
             balance=product.stock
         )
+
+        # Auto-track Inter-warehouse Transfers or Supplier Returns
+        if reason in ['transfer', 'return'] or destination:
+            transfer_type = 'supplier_return' if reason == 'return' else 'transfer'
+            dest_name = destination or ('Supplier Partner' if transfer_type == 'supplier_return' else 'Secondary Warehouse Branch')
+            BranchTransfer.objects.create(
+                product=product,
+                quantity=quantity,
+                destination=dest_name,
+                type=transfer_type,
+                status='dispatched',
+                dispatched_by=user,
+                reference=reference,
+                notes=notes
+            )
 
         return Response({
             'message': 'Stock out recorded successfully',

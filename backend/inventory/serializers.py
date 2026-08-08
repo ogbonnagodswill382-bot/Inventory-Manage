@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import Category, Supplier, Product, StockMovement, UserProfile
+from .models import Category, Supplier, Product, StockMovement, BranchTransfer, UserProfile
 
 class CategorySerializer(serializers.ModelSerializer):
     productCount = serializers.SerializerMethodField()
@@ -50,6 +50,20 @@ class StockMovementSerializer(serializers.ModelSerializer):
         fields = [
             'id', 'product', 'product_name', 'type', 'quantity',
             'user', 'reference', 'notes', 'balance', 'date'
+        ]
+
+class BranchTransferSerializer(serializers.ModelSerializer):
+    product_name = serializers.CharField(source='product.name', read_only=True)
+    product_sku = serializers.CharField(source='product.sku', read_only=True)
+    date = serializers.DateTimeField(source='created_at', format='%Y-%m-%d %H:%M', read_only=True)
+    returned_date = serializers.DateTimeField(source='returned_at', format='%Y-%m-%d %H:%M', read_only=True)
+
+    class Meta:
+        model = BranchTransfer
+        fields = [
+            'id', 'product', 'product_name', 'product_sku', 'quantity',
+            'destination', 'type', 'status', 'dispatched_by', 'approved_by',
+            'reference', 'notes', 'date', 'returned_date'
         ]
 
 class UserProfileSerializer(serializers.ModelSerializer):

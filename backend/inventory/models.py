@@ -56,6 +56,30 @@ class StockMovement(models.Model):
     def __str__(self):
         return f"{self.type.upper()} {self.quantity} - {self.product.name}"
 
+class BranchTransfer(models.Model):
+    TRANSFER_TYPES = (
+        ('transfer', 'Inter-warehouse Transfer'),
+        ('supplier_return', 'Return to Supplier'),
+    )
+    TRANSFER_STATUS = (
+        ('dispatched', 'Dispatched'),
+        ('returned_to_stock', 'Returned to Stock'),
+    )
+    product = models.ForeignKey(Product, related_name='transfers', on_delete=models.CASCADE)
+    quantity = models.IntegerField(default=1)
+    destination = models.CharField(max_length=250)
+    type = models.CharField(max_length=50, choices=TRANSFER_TYPES, default='transfer')
+    status = models.CharField(max_length=50, choices=TRANSFER_STATUS, default='dispatched')
+    dispatched_by = models.CharField(max_length=150, default='Administrator')
+    approved_by = models.CharField(max_length=150, blank=True, null=True)
+    reference = models.CharField(max_length=100, blank=True, null=True)
+    notes = models.TextField(blank=True, null=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    returned_at = models.DateTimeField(blank=True, null=True)
+
+    def __str__(self):
+        return f"{self.type.upper()} - {self.quantity} x {self.product.name} ({self.destination})"
+
 class UserProfile(models.Model):
     name = models.CharField(max_length=100)
     email = models.EmailField(unique=True)
