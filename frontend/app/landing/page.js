@@ -73,11 +73,8 @@ export default function LandingPage() {
               <Boxes className="h-5 w-5" />
             </div>
             <div>
-              <span className="font-extrabold text-base tracking-tight flex items-center gap-1.5">
+              <span className="font-extrabold text-base tracking-tight text-foreground">
                 StockFlow
-                <span className="inline-flex items-center rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-bold text-primary border border-primary/20">
-                  PRO
-                </span>
               </span>
             </div>
           </Link>
@@ -504,7 +501,7 @@ export default function LandingPage() {
             <div className="grid h-6 w-6 place-items-center rounded-md bg-primary text-primary-foreground font-bold">
               <Boxes className="h-3.5 w-3.5" />
             </div>
-            <span className="font-bold text-foreground">StockFlow PRO</span>
+            <span className="font-bold text-foreground">StockFlow</span>
             <span>
               © 2026. Created by{" "}
               <a

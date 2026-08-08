@@ -148,10 +148,29 @@ function SidebarContent({ onNavigate, collapsed = false, onToggleCollapse }) {
     role: "Warehouse Staff",
     avatar: "US",
   });
+  const [userTier, setUserTier] = useState(null); // Dynamic usage tier (ACTIVE | PRO | ENTERPRISE)
 
   useEffect(() => {
     const user = getAuthUser();
     if (user) setCurrentUser(user);
+
+    async function calculateUsageTier() {
+      const [prods, moves] = await Promise.all([getProducts(), getMovements()]);
+      const prodCount = (prods && Array.isArray(prods)) ? prods.length : 0;
+      const moveCount = (moves && Array.isArray(moves)) ? moves.length : 0;
+      const totalActivity = prodCount + moveCount;
+
+      if (totalActivity >= 50) {
+        setUserTier("ENTERPRISE");
+      } else if (totalActivity >= 15) {
+        setUserTier("PRO");
+      } else if (totalActivity >= 5) {
+        setUserTier("ACTIVE");
+      } else {
+        setUserTier(null); // Clean view for new users until activity builds up!
+      }
+    }
+    calculateUsageTier();
   }, []);
 
   const allowedNav = nav.filter((n) => isRouteAllowed(currentUser.role, n.href));
@@ -169,9 +188,11 @@ function SidebarContent({ onNavigate, collapsed = false, onToggleCollapse }) {
             <div className="min-w-0">
               <div className="text-sm font-bold tracking-tight text-sidebar-foreground truncate flex items-center gap-1.5">
                 StockFlow
-                <span className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-1.5 py-0.2 text-[10px] font-semibold text-primary">
-                  PRO
-                </span>
+                {userTier && (
+                  <span className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-1.5 py-0.2 text-[10px] font-semibold text-primary animate-in fade-in">
+                    {userTier}
+                  </span>
+                )}
               </div>
               <div className="text-[11px] text-muted-foreground truncate">Inventory Suite</div>
             </div>
