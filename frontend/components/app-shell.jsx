@@ -34,6 +34,7 @@ import {
   Info,
   ExternalLink,
   ShieldAlert,
+  Heart,
 } from "lucide-react";
 import { useState, useEffect, useRef } from "react";
 import { cn } from "@/lib/utils";
@@ -986,7 +987,17 @@ export function AppShell({ children }) {
         <main className="flex-1 p-3 sm:p-6 lg:p-8 overflow-x-hidden">{children}</main>
 
         <footer className="border-t px-4 sm:px-6 py-4 text-xs text-muted-foreground flex flex-wrap items-center justify-between gap-2">
-          <div>© 2026 StockFlow. Created by <strong className="text-foreground font-semibold">Sweetvex</strong>. All rights reserved.</div>
+          <div>
+            © 2026 StockFlow. Created with <Heart className="h-3 w-3 text-destructive inline fill-destructive mx-0.5" /> by{" "}
+            <a
+              href="https://swivex-personal.vercel.app/"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="font-extrabold bg-gradient-to-r from-primary via-emerald-500 to-chart-4 bg-clip-text text-transparent hover:underline transition"
+            >
+              Swivex
+            </a>. All rights reserved.
+          </div>
           <div className="flex gap-4">
             <Link href="/landing" className="hover:underline">Product Overview</Link>
             <span>v2.4.1</span>

@@ -498,7 +498,7 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* FOOTER WITH SWEETVEX ATTRIBUTION */}
+      {/* FOOTER WITH STYLISH SWIVEX PORTFOLIO LINK */}
       <footer className="border-t py-8 px-4 sm:px-8 text-xs text-muted-foreground">
         <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
           <div className="flex items-center gap-2">
@@ -506,7 +506,17 @@ export default function LandingPage() {
               <Boxes className="h-3.5 w-3.5" />
             </div>
             <span className="font-bold text-foreground">StockFlow PRO</span>
-            <span>© 2026. Created with <Heart className="h-3 w-3 text-destructive inline fill-destructive mx-0.5" /> by <strong className="text-foreground font-semibold">Sweetvex</strong>. All rights reserved.</span>
+            <span>
+              © 2026. Created with <Heart className="h-3 w-3 text-destructive inline fill-destructive mx-0.5" /> by{" "}
+              <a
+                href="https://swivex-personal.vercel.app/"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="font-extrabold bg-gradient-to-r from-primary via-emerald-500 to-chart-4 bg-clip-text text-transparent hover:underline transition"
+              >
+                Swivex
+              </a>. All rights reserved.
+            </span>
           </div>
           <div className="flex items-center gap-6">
             <Link href="/login" className="hover:text-foreground transition font-medium">Sign In</Link>
