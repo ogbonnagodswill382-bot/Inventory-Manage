@@ -54,8 +54,10 @@ function buildStockTrendData(movements = []) {
   if (movements && Array.isArray(movements) && movements.length > 0) {
     movements.forEach((m) => {
       let dayName = "Mon";
-      if (m.date) {
-        const d = new Date(m.date);
+      const rawDate = m.date || m.created_at;
+      if (rawDate) {
+        const isoString = String(rawDate).replace(" ", "T");
+        const d = new Date(isoString);
         if (!isNaN(d.getTime())) {
           dayName = d.toLocaleDateString("en-US", { weekday: "short" });
         }
@@ -179,34 +181,34 @@ export default function Dashboard() {
   ];
 
   return (
-    <div>
+    <div className="space-y-4 sm:space-y-6">
       <PageHeader
         title="Inventory Overview"
         description="Real-time stock levels, movement trends, and alert monitoring."
         actions={
-          <>
-            <Button asChild variant="outline">
+          <div className="flex items-center gap-2 w-full sm:w-auto">
+            <Button asChild variant="outline" size="sm" className="flex-1 sm:flex-initial text-xs sm:text-sm">
               <Link href="/stock-out">Stock Out</Link>
             </Button>
-            <Button asChild>
+            <Button asChild size="sm" className="flex-1 sm:flex-initial text-xs sm:text-sm">
               <Link href="/stock-in">
-                <Plus className="mr-2 h-4 w-4" /> Stock In
+                <Plus className="mr-1.5 h-3.5 w-3.5" /> Stock In
               </Link>
             </Button>
-          </>
+          </div>
         }
       />
 
-      {/* KPI Cards */}
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      {/* KPI Cards (Optimized for Galaxy Z Fold 5 folded & unfolded screens) */}
+      <div className="grid gap-3 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
         {kpis.map((k) => {
           const Icon = k.icon;
           return (
-            <Card key={k.label} className="relative overflow-hidden">
-              <CardContent className="p-5">
+            <Card key={k.label} className="relative overflow-hidden border-border/80 shadow-2xs">
+              <CardContent className="p-3.5 sm:p-5">
                 <div className="flex items-center justify-between">
-                  <div className={`grid h-10 w-10 place-items-center rounded-xl ${k.tint}`}>
-                    <Icon className="h-5 w-5" />
+                  <div className={`grid h-9 w-9 sm:h-10 sm:w-10 place-items-center rounded-xl ${k.tint}`}>
+                    <Icon className="h-4 w-4 sm:h-5 sm:w-5" />
                   </div>
                   <span
                     className={`inline-flex items-center text-xs font-semibold ${
@@ -217,10 +219,10 @@ export default function Dashboard() {
                     {k.trend}
                   </span>
                 </div>
-                <div className="mt-4">
-                  <div className="text-2xl font-bold tracking-tight">{k.value}</div>
-                  <div className="text-xs text-muted-foreground mt-0.5">{k.label}</div>
-                  <div className="text-[11px] text-muted-foreground/80 mt-1 font-medium">{k.sub}</div>
+                <div className="mt-3 sm:mt-4">
+                  <div className="text-xl sm:text-2xl font-bold tracking-tight">{k.value}</div>
+                  <div className="text-xs text-muted-foreground mt-0.5 font-medium">{k.label}</div>
+                  <div className="text-[11px] text-muted-foreground/80 mt-1 font-medium truncate">{k.sub}</div>
                 </div>
               </CardContent>
             </Card>
@@ -229,16 +231,16 @@ export default function Dashboard() {
       </div>
 
       {/* Analytics Charts Row */}
-      <div className="mt-6 grid gap-4 lg:grid-cols-3">
+      <div className="grid gap-4 lg:grid-cols-3">
         <Card className="lg:col-span-2">
-          <CardHeader className="flex flex-row items-center justify-between">
-            <CardTitle className="text-base font-semibold">Stock Movement Trend (Live Database)</CardTitle>
-            <span className="text-xs text-muted-foreground font-medium">Aggregated Records</span>
+          <CardHeader className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 sm:gap-0 pb-2">
+            <CardTitle className="text-sm sm:text-base font-semibold">Stock Movement Trend (Live Database)</CardTitle>
+            <span className="text-[11px] sm:text-xs text-muted-foreground font-medium">Aggregated Records</span>
           </CardHeader>
-          <CardContent>
-            <div className="h-64 w-full">
+          <CardContent className="p-2 sm:p-6 pt-0">
+            <div className="h-56 sm:h-64 w-full">
               <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={stockTrend} margin={{ left: -20, right: 10, top: 10 }}>
+                <AreaChart data={stockTrend} margin={{ left: -25, right: 5, top: 10 }}>
                   <defs>
                     <linearGradient id="inGrad" x1="0" y1="0" x2="0" y2="1">
                       <stop offset="5%" stopColor="var(--color-primary)" stopOpacity={0.4} />
@@ -250,8 +252,8 @@ export default function Dashboard() {
                     </linearGradient>
                   </defs>
                   <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" vertical={false} />
-                  <XAxis dataKey="day" stroke="var(--color-muted-foreground)" fontSize={12} tickLine={false} axisLine={false} />
-                  <YAxis stroke="var(--color-muted-foreground)" fontSize={12} tickLine={false} axisLine={false} />
+                  <XAxis dataKey="day" stroke="var(--color-muted-foreground)" fontSize={11} tickLine={false} axisLine={false} />
+                  <YAxis stroke="var(--color-muted-foreground)" fontSize={11} tickLine={false} axisLine={false} />
                   <Tooltip contentStyle={tooltipStyle} />
                   <Area type="monotone" dataKey="in" stroke="var(--color-primary)" strokeWidth={2} fillOpacity={1} fill="url(#inGrad)" name="Stock In (+)" />
                   <Area type="monotone" dataKey="out" stroke="var(--color-chart-4)" strokeWidth={2} fillOpacity={1} fill="url(#outGrad)" name="Stock Out (-)" />
@@ -262,17 +264,17 @@ export default function Dashboard() {
         </Card>
 
         <Card>
-          <CardHeader>
-            <CardTitle className="text-base font-semibold">Stock by Category</CardTitle>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm sm:text-base font-semibold">Stock by Category</CardTitle>
           </CardHeader>
-          <CardContent>
-            <div className="h-64 w-full">
+          <CardContent className="p-2 sm:p-6 pt-0">
+            <div className="h-56 sm:h-64 w-full">
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
                   <Pie
                     data={categoryMix}
-                    innerRadius={55}
-                    outerRadius={85}
+                    innerRadius={45}
+                    outerRadius={75}
                     paddingAngle={3}
                     dataKey="value"
                   >
@@ -288,90 +290,94 @@ export default function Dashboard() {
         </Card>
       </div>
 
-      {/* Tables Row */}
-      <div className="mt-6 grid gap-4 lg:grid-cols-2">
+      {/* Tables Row (Responsive Overflow for Galaxy Z Fold 5) */}
+      <div className="grid gap-4 lg:grid-cols-2">
         {/* Top Products */}
         <Card>
-          <CardHeader className="flex flex-row items-center justify-between">
-            <CardTitle className="text-base font-semibold">Inventory Products</CardTitle>
-            <Button asChild variant="ghost" size="sm" className="text-xs">
+          <CardHeader className="flex flex-row items-center justify-between py-3.5 px-4 sm:px-6">
+            <CardTitle className="text-sm sm:text-base font-semibold">Inventory Products</CardTitle>
+            <Button asChild variant="ghost" size="sm" className="text-xs h-8 px-2">
               <Link href="/products">View all <ArrowUpRight className="ml-1 h-3.5 w-3.5" /></Link>
             </Button>
           </CardHeader>
           <CardContent className="p-0">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Product</TableHead>
-                  <TableHead className="text-right">Price</TableHead>
-                  <TableHead className="text-right">Stock</TableHead>
-                  <TableHead>Status</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {productsList.slice(0, 5).map((p) => (
-                  <TableRow key={p.id}>
-                    <TableCell>
-                      <div className="flex items-center gap-3">
-                        <ProductIcon name={p.name} categoryName={p.category_name} emoji={p.emoji} />
-                        <div>
-                          <div className="font-medium text-sm">{p.name}</div>
-                          <div className="text-xs text-muted-foreground font-mono">{p.sku}</div>
-                        </div>
-                      </div>
-                    </TableCell>
-                    <TableCell className="text-right font-medium text-sm">{formatCurrency(p.price)}</TableCell>
-                    <TableCell className="text-right font-semibold text-sm">{p.stock}</TableCell>
-                    <TableCell><StatusBadge status={p.status} /></TableCell>
+            <div className="overflow-x-auto w-full scrollbar-thin">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="text-xs">Product</TableHead>
+                    <TableHead className="text-right text-xs">Price</TableHead>
+                    <TableHead className="text-right text-xs">Stock</TableHead>
+                    <TableHead className="text-xs">Status</TableHead>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+                </TableHeader>
+                <TableBody>
+                  {productsList.slice(0, 5).map((p) => (
+                    <TableRow key={p.id}>
+                      <TableCell className="py-2.5">
+                        <div className="flex items-center gap-2.5 min-w-0">
+                          <ProductIcon name={p.name} categoryName={p.category_name} emoji={p.emoji} className="h-7 w-7 shrink-0" iconClassName="h-3.5 w-3.5" />
+                          <div className="min-w-0">
+                            <div className="font-medium text-xs sm:text-sm truncate max-w-[110px] sm:max-w-[160px]">{p.name}</div>
+                            <div className="text-[10px] text-muted-foreground font-mono truncate">{p.sku}</div>
+                          </div>
+                        </div>
+                      </TableCell>
+                      <TableCell className="text-right font-medium text-xs sm:text-sm whitespace-nowrap">{formatCurrency(p.price)}</TableCell>
+                      <TableCell className="text-right font-semibold text-xs sm:text-sm whitespace-nowrap">{p.stock}</TableCell>
+                      <TableCell className="whitespace-nowrap"><StatusBadge status={p.status} /></TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
           </CardContent>
         </Card>
 
         {/* Recent Audit Movements */}
         <Card>
-          <CardHeader className="flex flex-row items-center justify-between">
-            <CardTitle className="text-base font-semibold">Recent Movements</CardTitle>
-            <Button asChild variant="ghost" size="sm" className="text-xs">
+          <CardHeader className="flex flex-row items-center justify-between py-3.5 px-4 sm:px-6">
+            <CardTitle className="text-sm sm:text-base font-semibold">Recent Movements</CardTitle>
+            <Button asChild variant="ghost" size="sm" className="text-xs h-8 px-2">
               <Link href="/stock-history">Full log <ArrowUpRight className="ml-1 h-3.5 w-3.5" /></Link>
             </Button>
           </CardHeader>
           <CardContent className="p-0">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Movement</TableHead>
-                  <TableHead className="text-right">Qty</TableHead>
-                  <TableHead className="text-right">Balance</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {recentMovements.length === 0 ? (
+            <div className="overflow-x-auto w-full scrollbar-thin">
+              <Table>
+                <TableHeader>
                   <TableRow>
-                    <TableCell colSpan={3} className="text-center py-6 text-xs text-muted-foreground">
-                      No stock movements recorded yet.
-                    </TableCell>
+                    <TableHead className="text-xs">Movement</TableHead>
+                    <TableHead className="text-right text-xs">Qty</TableHead>
+                    <TableHead className="text-right text-xs">Balance</TableHead>
                   </TableRow>
-                ) : (
-                  recentMovements.map((m) => (
-                    <TableRow key={m.id}>
-                      <TableCell>
-                        <div className="font-medium text-sm">{m.product_name}</div>
-                        <div className="text-xs text-muted-foreground">
-                          {m.type === "in" ? "Stock In" : "Stock Out"} · {m.user} · {m.date}
-                        </div>
+                </TableHeader>
+                <TableBody>
+                  {recentMovements.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={3} className="text-center py-6 text-xs text-muted-foreground">
+                        No stock movements recorded yet.
                       </TableCell>
-                      <TableCell className={`text-right font-semibold text-sm ${m.type === "in" ? "text-success" : "text-destructive"}`}>
-                        {m.type === "in" ? `+${m.quantity}` : `-${m.quantity}`}
-                      </TableCell>
-                      <TableCell className="text-right font-medium text-sm text-muted-foreground">{m.balance}</TableCell>
                     </TableRow>
-                  ))
-                )}
-              </TableBody>
-            </Table>
+                  ) : (
+                    recentMovements.map((m) => (
+                      <TableRow key={m.id}>
+                        <TableCell className="py-2.5">
+                          <div className="font-medium text-xs sm:text-sm truncate max-w-[130px] sm:max-w-[180px]">{m.product_name}</div>
+                          <div className="text-[10px] text-muted-foreground truncate">
+                            {m.type === "in" ? "Stock In" : "Stock Out"} · {m.user} · {m.date}
+                          </div>
+                        </TableCell>
+                        <TableCell className={`text-right font-semibold text-xs sm:text-sm whitespace-nowrap ${m.type === "in" ? "text-success" : "text-destructive"}`}>
+                          {m.type === "in" ? `+${m.quantity}` : `-${m.quantity}`}
+                        </TableCell>
+                        <TableCell className="text-right font-medium text-xs sm:text-sm text-muted-foreground whitespace-nowrap">{m.balance}</TableCell>
+                      </TableRow>
+                    ))
+                  )}
+                </TableBody>
+              </Table>
+            </div>
           </CardContent>
         </Card>
       </div>
