@@ -31,6 +31,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { ProductIcon } from "@/components/product-icon";
 import { getReports, getProducts, getMovements } from "@/lib/api";
 import { formatCurrency } from "@/lib/theme";
+import { cn } from "@/lib/utils";
 
 const tooltipStyle = {
   background: "var(--color-popover)",
@@ -290,18 +291,46 @@ export default function Dashboard() {
         </Card>
       </div>
 
-      {/* Tables Row (Responsive Overflow for Galaxy Z Fold 5) */}
+      {/* Tables & Mobile Card Section (Dual Responsive Layout for Galaxy Z Fold 5 & Mobile Devices) */}
       <div className="grid gap-4 lg:grid-cols-2">
-        {/* Top Products */}
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between py-3.5 px-4 sm:px-6">
+        
+        {/* INVENTORY PRODUCTS CARD */}
+        <Card className="overflow-hidden">
+          <CardHeader className="flex flex-row items-center justify-between py-3.5 px-4 sm:px-6 border-b">
             <CardTitle className="text-sm sm:text-base font-semibold">Inventory Products</CardTitle>
             <Button asChild variant="ghost" size="sm" className="text-xs h-8 px-2">
               <Link href="/products">View all <ArrowUpRight className="ml-1 h-3.5 w-3.5" /></Link>
             </Button>
           </CardHeader>
+
           <CardContent className="p-0">
-            <div className="overflow-x-auto w-full scrollbar-thin">
+            {/* MOBILE & Z FOLD 5 COVER SCREEN CARD LIST (< md) */}
+            <div className="block md:hidden divide-y">
+              {productsList.slice(0, 5).map((p) => (
+                <div key={p.id} className="p-3.5 space-y-2 hover:bg-muted/40 transition">
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      <ProductIcon name={p.name} categoryName={p.category_name} emoji={p.emoji} className="h-8 w-8 shrink-0 rounded-lg" iconClassName="h-4 w-4" />
+                      <div className="min-w-0">
+                        <div className="font-semibold text-xs text-foreground truncate">{p.name}</div>
+                        <div className="text-[10px] text-muted-foreground font-mono truncate">{p.sku}</div>
+                      </div>
+                    </div>
+                    <div className="text-right shrink-0">
+                      <div className="font-bold text-xs text-foreground">{formatCurrency(p.price)}</div>
+                      <div className="text-[10px] text-muted-foreground font-medium">{p.stock} units</div>
+                    </div>
+                  </div>
+                  <div className="flex items-center justify-between pt-1 border-t border-border/40 text-[11px]">
+                    <span className="text-muted-foreground font-medium">{p.category_name || "General"}</span>
+                    <StatusBadge status={p.status} />
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* DESKTOP TABLE VIEW (≥ md) */}
+            <div className="hidden md:block overflow-x-auto w-full scrollbar-thin">
               <Table>
                 <TableHeader>
                   <TableRow>
@@ -318,7 +347,7 @@ export default function Dashboard() {
                         <div className="flex items-center gap-2.5 min-w-0">
                           <ProductIcon name={p.name} categoryName={p.category_name} emoji={p.emoji} className="h-7 w-7 shrink-0" iconClassName="h-3.5 w-3.5" />
                           <div className="min-w-0">
-                            <div className="font-medium text-xs sm:text-sm truncate max-w-[110px] sm:max-w-[160px]">{p.name}</div>
+                            <div className="font-medium text-xs sm:text-sm truncate max-w-[130px] lg:max-w-[180px]">{p.name}</div>
                             <div className="text-[10px] text-muted-foreground font-mono truncate">{p.sku}</div>
                           </div>
                         </div>
@@ -334,16 +363,43 @@ export default function Dashboard() {
           </CardContent>
         </Card>
 
-        {/* Recent Audit Movements */}
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between py-3.5 px-4 sm:px-6">
+        {/* RECENT MOVEMENTS CARD */}
+        <Card className="overflow-hidden">
+          <CardHeader className="flex flex-row items-center justify-between py-3.5 px-4 sm:px-6 border-b">
             <CardTitle className="text-sm sm:text-base font-semibold">Recent Movements</CardTitle>
             <Button asChild variant="ghost" size="sm" className="text-xs h-8 px-2">
               <Link href="/stock-history">Full log <ArrowUpRight className="ml-1 h-3.5 w-3.5" /></Link>
             </Button>
           </CardHeader>
+
           <CardContent className="p-0">
-            <div className="overflow-x-auto w-full scrollbar-thin">
+            {/* MOBILE & Z FOLD 5 COVER SCREEN CARD LIST (< md) */}
+            <div className="block md:hidden divide-y">
+              {recentMovements.length === 0 ? (
+                <div className="p-6 text-center text-xs text-muted-foreground">No stock movements recorded yet.</div>
+              ) : (
+                recentMovements.map((m) => (
+                  <div key={m.id} className="p-3.5 space-y-1.5 hover:bg-muted/40 transition">
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="font-semibold text-xs text-foreground truncate">{m.product_name}</div>
+                      <span className={cn(
+                        "text-[11px] font-bold px-2 py-0.5 rounded-full shrink-0",
+                        m.type === "in" ? "bg-success/15 text-success" : "bg-destructive/15 text-destructive"
+                      )}>
+                        {m.type === "in" ? `+${m.quantity} Stock In` : `-${m.quantity} Stock Out`}
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between text-[11px] text-muted-foreground pt-1">
+                      <span className="truncate">By {m.user} · {m.date}</span>
+                      <span className="font-semibold text-foreground shrink-0 ml-2">Balance: {m.balance}</span>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+
+            {/* DESKTOP TABLE VIEW (≥ md) */}
+            <div className="hidden md:block overflow-x-auto w-full scrollbar-thin">
               <Table>
                 <TableHeader>
                   <TableRow>
@@ -363,7 +419,7 @@ export default function Dashboard() {
                     recentMovements.map((m) => (
                       <TableRow key={m.id}>
                         <TableCell className="py-2.5">
-                          <div className="font-medium text-xs sm:text-sm truncate max-w-[130px] sm:max-w-[180px]">{m.product_name}</div>
+                          <div className="font-medium text-xs sm:text-sm truncate max-w-[130px] lg:max-w-[180px]">{m.product_name}</div>
                           <div className="text-[10px] text-muted-foreground truncate">
                             {m.type === "in" ? "Stock In" : "Stock Out"} · {m.user} · {m.date}
                           </div>
@@ -380,6 +436,7 @@ export default function Dashboard() {
             </div>
           </CardContent>
         </Card>
+
       </div>
     </div>
   );
