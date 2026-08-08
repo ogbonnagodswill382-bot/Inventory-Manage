@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Boxes, Lock, Mail, User, Shield, Send, ArrowRight, CheckCircle2, Crown } from "lucide-react";
+import { Boxes, Lock, Mail, User, Shield, Send, ArrowRight, CheckCircle2, Crown, Sparkles } from "lucide-react";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -137,15 +137,35 @@ export default function LoginPage() {
           </div>
         </div>
 
-        <div className="relative z-10 max-w-md space-y-4">
-          <h2 className="text-3xl font-bold tracking-tight">Smart, real-time inventory management.</h2>
+        <div className="relative z-10 max-w-md space-y-5">
+          <div className="inline-flex items-center gap-2 rounded-full border bg-primary/10 px-3 py-1 text-xs font-semibold text-primary">
+            <Sparkles className="h-3.5 w-3.5" /> Enterprise-Grade Inventory Control
+          </div>
+          <h2 className="text-3xl font-extrabold tracking-tight text-foreground leading-tight">
+            Empower your business with smart, real-time inventory control.
+          </h2>
           <p className="text-sm text-muted-foreground leading-relaxed">
-            Manage stock movements, monitor product alert thresholds, track suppliers, and delegate staff accounts securely with Django REST API.
+            Eliminate costly stockouts, streamline warehouse dispatches, automate reorder alerts, and manage team permissions with institutional REST security.
           </p>
-          <div className="flex flex-col gap-2.5 pt-2 text-xs font-medium text-muted-foreground">
-            <span className="flex items-center gap-2"><CheckCircle2 className="h-4 w-4 text-emerald-500" /> Admin-driven staff account creation & credentials</span>
-            <span className="flex items-center gap-2"><CheckCircle2 className="h-4 w-4 text-emerald-500" /> Real-time audit movement logging</span>
-            <span className="flex items-center gap-2"><CheckCircle2 className="h-4 w-4 text-emerald-500" /> Django REST Framework backend security</span>
+          <div className="space-y-3 pt-2 text-xs font-medium text-muted-foreground">
+            <div className="flex items-start gap-2.5">
+              <CheckCircle2 className="h-4 w-4 text-emerald-500 shrink-0 mt-0.5" />
+              <div>
+                <span className="font-semibold text-foreground">Zero-Stockout Protection:</span> Live threshold warnings & red-flag safeguards keep your inventory balanced 24/7.
+              </div>
+            </div>
+            <div className="flex items-start gap-2.5">
+              <CheckCircle2 className="h-4 w-4 text-emerald-500 shrink-0 mt-0.5" />
+              <div>
+                <span className="font-semibold text-foreground">Multi-User Role Permissions:</span> Admin-controlled staff access, password resets, and top admin protection.
+              </div>
+            </div>
+            <div className="flex items-start gap-2.5">
+              <CheckCircle2 className="h-4 w-4 text-emerald-500 shrink-0 mt-0.5" />
+              <div>
+                <span className="font-semibold text-foreground">Real-Time Audit & Analytics:</span> Complete movement history, live valuation, and 1-click PDF/CSV report exports.
+              </div>
+            </div>
           </div>
         </div>
 
