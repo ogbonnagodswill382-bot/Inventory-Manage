@@ -1,7 +1,8 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { ArrowUpFromLine, Save, Package, AlertTriangle } from "lucide-react";
+import Link from "next/link";
+import { ArrowUpFromLine, Save, Package, AlertTriangle, ArrowLeftRight } from "lucide-react";
 import { PageHeader } from "@/components/app-shell";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -79,12 +80,16 @@ export default function StockOutPage() {
       quantity: numQty,
       reference: reference.trim() || `SO-${Date.now().toString().slice(-4)}`,
       notes: fullNotes,
+      destination: destination.trim(),
+      reason: reason,
       user: activeUser?.name || "Administrator",
     });
 
     if (res && res.message) {
       toast.success("Stock Out recorded successfully! ✅", {
-        description: `New balance for ${selectedProduct?.name || 'product'}: ${res.new_stock} units. Form reset for next entry.`,
+        description: reason === "transfer" || reason === "return" || destination
+          ? `Stock Out recorded & added to Transfers & Returns Log! Track returns at /transfers.`
+          : `New balance for ${selectedProduct?.name || 'product'}: ${res.new_stock} units. Form reset for next entry.`,
       });
 
       // AUTO-REFRESH & RESET FORM TO INITIAL CLEAN STATE
@@ -101,6 +106,13 @@ export default function StockOutPage() {
       <PageHeader
         title="Stock Out Dispatches"
         description="Record outbound inventory leaving your warehouse for sales, transfers, or damage."
+        actions={
+          <Button asChild variant="outline" className="gap-2">
+            <Link href="/transfers">
+              <ArrowLeftRight className="h-4 w-4 text-primary" /> Transfers & Returns Audit Log
+            </Link>
+          </Button>
+        }
       />
 
       <div className="grid gap-4 lg:grid-cols-3">
@@ -166,7 +178,7 @@ export default function StockOutPage() {
               </div>
 
               <div className="space-y-1.5">
-                <Label>Destination / Customer</Label>
+                <Label>Destination / Customer / Branch</Label>
                 <Input value={destination} onChange={(e) => setDestination(e.target.value)} placeholder="e.g. Store #204, Downtown" />
               </div>
 
