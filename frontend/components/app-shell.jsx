@@ -510,7 +510,7 @@ function Notifications() {
             if (!clearedList.includes(id)) {
               list.push({
                 id,
-                title: `Goods Returned & Restocked: ${t.product_name}`,
+                title: `Goods Returned & Approved: ${t.product_name}`,
                 sub: `+${t.quantity} units from ${t.destination} · Approved by ${t.approved_by || 'Administrator'}`,
                 message: `Goods Return Audit Approved: ${t.quantity} units of "${t.product_name}" (SKU: ${t.product_sku}) were returned back from ${t.destination} and restocked directly into warehouse inventory. Approved by ${t.approved_by || 'Administrator'}.`,
                 time: t.returned_date || "Recently",
@@ -912,12 +912,13 @@ export function AppShell({ children }) {
   const [checkingAuth, setCheckingAuth] = useState(true);
   const pathname = usePathname();
   const router = useRouter();
-  const isLoginPage = pathname === "/login";
+  
+  const isPublicPage = pathname === "/login" || pathname === "/landing";
 
   useEffect(() => {
     applyTheme(getStoredTheme());
 
-    if (isLoginPage) {
+    if (isPublicPage) {
       setCheckingAuth(false);
       return;
     }
@@ -937,9 +938,9 @@ export function AppShell({ children }) {
     }
 
     setCheckingAuth(false);
-  }, [pathname, isLoginPage, router]);
+  }, [pathname, isPublicPage, router]);
 
-  if (isLoginPage) {
+  if (isPublicPage) {
     return <>{children}</>;
   }
 
@@ -987,9 +988,9 @@ export function AppShell({ children }) {
         <footer className="border-t px-4 sm:px-6 py-4 text-xs text-muted-foreground flex flex-wrap items-center justify-between gap-2">
           <div>© 2026 StockFlow. All rights reserved.</div>
           <div className="flex gap-4">
+            <Link href="/landing" className="hover:underline">Product Overview</Link>
             <span>v2.4.1</span>
             <span>Support</span>
-            <span>Docs</span>
           </div>
         </footer>
       </div>
