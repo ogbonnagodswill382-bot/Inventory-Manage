@@ -22,6 +22,11 @@ import {
   Globe,
   Crown,
   Users,
+  PlusCircle,
+  MinusCircle,
+  CornerDownLeft,
+  DollarSign,
+  Heart,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -29,29 +34,35 @@ import { cn } from "@/lib/utils";
 
 export default function LandingPage() {
   const [activeFaq, setActiveFaq] = useState(null);
+  const [demoCurrency, setDemoCurrency] = useState("NGN"); // NGN (₦) or USD ($)
+  const [demoStock, setDemoStock] = useState(45);
 
   const faqs = [
     {
-      q: "Why should my company switch from manual spreadsheets to StockFlow?",
-      a: "Manual spreadsheets lead to human calculation errors, delayed reorders, and lost branch dispatches. StockFlow provides real-time stock balance tracking, automatic low-stock warnings, 1-click PDF/CSV reporting, and multi-user role security in one unified platform.",
+      q: "Why should my business switch from manual notebooks or spreadsheets to StockFlow?",
+      a: "Manual notebooks and spreadsheets cause calculation mistakes, lost stock dispatches, and unexpected stockouts. StockFlow automatically keeps track of your stock count, warns you before items run out, handles Naira (₦) or Dollar ($) currency balances, and keeps your store data safe.",
     },
     {
       q: "How does the Inter-Branch Transfer and Supplier Return Approval work?",
-      a: "When goods are sent to another store branch or returned to a supplier, StockFlow creates a pending dispatch record. Once the branch or supplier returns the goods to your warehouse, an Administrator or Inventory Manager clicks 'Approve & Restock' to automatically add the returned quantity (+Qty) directly back into your warehouse inventory stock.",
+      a: "When you send products out to a branch store or supplier, StockFlow records it as 'Dispatched Out'. When the store or supplier returns the goods to your warehouse, your Manager or Administrator clicks 'Approve & Restock' to automatically add the items (+Qty) directly back into your stock count.",
     },
     {
-      q: "How do I issue login credentials to my warehouse staff members?",
-      a: "Company Administrators can create staff accounts directly inside the Users & Access Management panel (/users). StockFlow generates a one-click copyable credential card containing initial login details to hand to your employees.",
+      q: "How do I give my staff members access to the app?",
+      a: "As a Company Administrator, you can create accounts for your workers under the Users page (/users). StockFlow gives you a 1-click copy card with initial login details to pass to your staff safely.",
     },
     {
-      q: "Can I customize the currency symbol for my business country?",
-      a: "Yes! In Inventory Settings (/settings), you can select standard currencies ($, €, £, ₦, CA$, ₹, ¥) or input your own custom currency symbol. Every product price, KPI card, and valuation report instantly formats using your chosen currency.",
+      q: "Can I set the currency to Naira (₦) or any other symbol?",
+      a: "Yes! In Settings (/settings), you can select Naira (₦), Dollar ($), Euro (€), Pound (£), or type any custom currency symbol. Your entire app, inventory valuation, and PDF reports will immediately display in your chosen currency.",
     },
     {
-      q: "Is StockFlow responsive on mobile phones and foldable tablet displays?",
-      a: "Absolutely. StockFlow features an adaptive dual layout engine optimized specifically for mobile phones, tablet devices, and fold displays like the Samsung Galaxy Z Fold 5 (both cover screen and inner tablet modes).",
+      q: "Will StockFlow work on my mobile phone or Samsung Galaxy Z Fold device?",
+      a: "Yes! StockFlow is 100% responsive and specially built to look great on mobile phones, tablets, and fold devices like the Samsung Galaxy Z Fold 5.",
     },
   ];
+
+  const currSymbol = demoCurrency === "NGN" ? "₦" : "$";
+  const unitPrice = demoCurrency === "NGN" ? 25000 : 50;
+  const totalValuation = (demoStock * unitPrice).toLocaleString("en-US");
 
   return (
     <div className="min-h-screen bg-background text-foreground select-none overflow-x-hidden">
@@ -74,7 +85,7 @@ export default function LandingPage() {
 
           <nav className="hidden md:flex items-center gap-8 text-xs font-semibold text-muted-foreground">
             <a href="#why-stockflow" className="hover:text-primary transition">Why StockFlow</a>
-            <a href="#how-it-works" className="hover:text-primary transition">How It Works</a>
+            <a href="#layman-guide" className="hover:text-primary transition">How To Use</a>
             <a href="#benefits" className="hover:text-primary transition">Key Benefits</a>
             <a href="#faq" className="hover:text-primary transition">FAQ</a>
           </nav>
@@ -92,7 +103,7 @@ export default function LandingPage() {
         </div>
       </header>
 
-      {/* HERO SECTION */}
+      {/* HERO SECTION WITH INTERACTIVE DEMO */}
       <section className="relative pt-12 pb-20 md:pt-20 md:pb-32 overflow-hidden border-b">
         <div className="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] rounded-full bg-primary/10 blur-[120px] pointer-events-none" />
         <div className="absolute top-1/3 right-10 w-[400px] h-[400px] rounded-full bg-chart-4/10 blur-[100px] pointer-events-none" />
@@ -110,7 +121,7 @@ export default function LandingPage() {
           </h1>
 
           <p className="max-w-2xl mx-auto text-sm sm:text-base text-muted-foreground leading-relaxed">
-            Eliminate costly stockouts, streamline warehouse dispatches, audit inter-branch transfers, and manage team permissions with institutional enterprise security.
+            Eliminate stockout losses, streamline warehouse dispatches, audit inter-branch transfers, and manage team access with institutional enterprise security.
           </p>
 
           <div className="flex flex-wrap items-center justify-center gap-3 pt-4">
@@ -126,38 +137,86 @@ export default function LandingPage() {
             </Button>
           </div>
 
-          {/* APP UI PREVIEW MOCKUP CARD */}
+          {/* INTERACTIVE DEMO WIDGET MOCKUP */}
           <div className="pt-10 max-w-4xl mx-auto">
-            <div className="rounded-2xl border bg-card/60 p-2 sm:p-4 shadow-2xl backdrop-blur">
-              <div className="rounded-xl border bg-background p-4 sm:p-6 text-left space-y-4 shadow-inner">
-                <div className="flex items-center justify-between pb-3 border-b">
-                  <div className="flex items-center gap-2">
-                    <div className="h-3 w-3 rounded-full bg-destructive" />
-                    <div className="h-3 w-3 rounded-full bg-warning" />
-                    <div className="h-3 w-3 rounded-full bg-success" />
-                    <span className="ml-2 text-xs font-mono text-muted-foreground">stockflow-dashboard-v2.4.pro</span>
+            <div className="rounded-2xl border bg-card/60 p-3 sm:p-5 shadow-2xl backdrop-blur space-y-4">
+              <div className="flex flex-wrap items-center justify-between gap-2 border-b pb-3 text-xs">
+                <div className="flex items-center gap-2 font-mono text-muted-foreground">
+                  <span className="h-3 w-3 rounded-full bg-destructive inline-block" />
+                  <span className="h-3 w-3 rounded-full bg-warning inline-block" />
+                  <span className="h-3 w-3 rounded-full bg-success inline-block" />
+                  <span className="font-semibold text-foreground">Live Interactive Demo</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="text-muted-foreground text-[11px]">Select Currency:</span>
+                  <Button
+                    size="xs"
+                    variant={demoCurrency === "NGN" ? "default" : "outline"}
+                    onClick={() => setDemoCurrency("NGN")}
+                    className="text-[11px] h-7 px-2.5"
+                  >
+                    ₦ Naira (NGN)
+                  </Button>
+                  <Button
+                    size="xs"
+                    variant={demoCurrency === "USD" ? "default" : "outline"}
+                    onClick={() => setDemoCurrency("USD")}
+                    className="text-[11px] h-7 px-2.5"
+                  >
+                    $ Dollar (USD)
+                  </Button>
+                </div>
+              </div>
+
+              {/* DEMO CARD GRID */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-left">
+                <div className="rounded-xl border bg-background p-3.5 space-y-1">
+                  <div className="text-[10px] text-muted-foreground font-semibold uppercase">Product Sample</div>
+                  <div className="font-bold text-sm text-foreground flex items-center justify-between">
+                    <span>📦 Wireless Headset</span>
+                    <span className="text-xs text-muted-foreground font-mono">SF-HEAD-101</span>
                   </div>
-                  <span className="text-[11px] font-semibold text-emerald-600 bg-emerald-500/10 px-2.5 py-0.5 rounded-full border border-emerald-500/20">
-                    🟢 Live System Active
-                  </span>
+                  <div className="text-xs text-muted-foreground pt-1 border-t mt-2 flex justify-between">
+                    <span>Price per unit:</span>
+                    <strong className="text-foreground">{currSymbol}{unitPrice.toLocaleString()}</strong>
+                  </div>
                 </div>
 
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                  <div className="rounded-lg border bg-muted/30 p-3 space-y-1">
-                    <div className="text-[10px] text-muted-foreground font-medium uppercase">Active Products</div>
-                    <div className="text-lg font-bold text-foreground">1,248 Items</div>
+                <div className="rounded-xl border bg-background p-3.5 space-y-2">
+                  <div className="text-[10px] text-muted-foreground font-semibold uppercase">Stock Balance</div>
+                  <div className="font-bold text-xl text-emerald-600 dark:text-emerald-400 flex items-center justify-between">
+                    <span>{demoStock} units</span>
+                    <div className="flex gap-1">
+                      <Button
+                        size="xs"
+                        variant="outline"
+                        onClick={() => setDemoStock(prev => prev + 5)}
+                        className="h-6 px-1.5 text-emerald-600 hover:bg-emerald-500/10"
+                        title="Simulate Stock In (+5)"
+                      >
+                        +5 Stock In
+                      </Button>
+                      <Button
+                        size="xs"
+                        variant="outline"
+                        onClick={() => setDemoStock(prev => Math.max(0, prev - 5))}
+                        className="h-6 px-1.5 text-destructive hover:bg-destructive/10"
+                        title="Simulate Stock Out (-5)"
+                      >
+                        -5 Stock Out
+                      </Button>
+                    </div>
                   </div>
-                  <div className="rounded-lg border bg-muted/30 p-3 space-y-1">
-                    <div className="text-[10px] text-muted-foreground font-medium uppercase">Low Stock Alerts</div>
-                    <div className="text-lg font-bold text-amber-600">3 Warnings</div>
+                  <div className="text-[11px] text-muted-foreground">
+                    Status: {demoStock > 10 ? "🟢 In Stock" : demoStock > 0 ? "⚠️ Low Stock Warning" : "🔴 Out of Stock"}
                   </div>
-                  <div className="rounded-lg border bg-muted/30 p-3 space-y-1">
-                    <div className="text-[10px] text-muted-foreground font-medium uppercase">Out of Stock</div>
-                    <div className="text-lg font-bold text-destructive">0 Critical</div>
-                  </div>
-                  <div className="rounded-lg border bg-muted/30 p-3 space-y-1">
-                    <div className="text-[10px] text-muted-foreground font-medium uppercase">Total Valuation</div>
-                    <div className="text-lg font-bold text-emerald-600">$142,850.00</div>
+                </div>
+
+                <div className="rounded-xl border bg-background p-3.5 space-y-1">
+                  <div className="text-[10px] text-muted-foreground font-semibold uppercase">Total Asset Valuation</div>
+                  <div className="font-bold text-xl text-primary">{currSymbol}{totalValuation}</div>
+                  <div className="text-[11px] text-muted-foreground pt-1 border-t mt-2">
+                    Auto-calculated in {demoCurrency === "NGN" ? "Naira (₦)" : "Dollars ($)"}
                   </div>
                 </div>
               </div>
@@ -174,7 +233,7 @@ export default function LandingPage() {
               Why StockFlow Was Built For Your Business
             </h2>
             <p className="text-sm sm:text-base text-muted-foreground">
-              Traditional inventory systems rely on fragile spreadsheets, causing un-tracked branch transfers, lost inventory, and unexpected stockouts. StockFlow solves this.
+              Traditional inventory management relies on fragile spreadsheets, causing un-tracked branch transfers, lost inventory, and unexpected stockouts. StockFlow solves this.
             </p>
           </div>
 
@@ -223,51 +282,66 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* HOW IT WORKS (3 SIMPLE STEPS) */}
-      <section id="how-it-works" className="py-16 md:py-24 border-b">
+      {/* LAYMAN'S STEP-BY-STEP GUIDE: HOW TO USE THE APP */}
+      <section id="layman-guide" className="py-16 md:py-24 border-b">
         <div className="max-w-6xl mx-auto px-4 sm:px-8 space-y-12">
           <div className="text-center max-w-3xl mx-auto space-y-3">
+            <div className="inline-flex items-center gap-2 rounded-full border bg-primary/10 px-3 py-1 text-xs font-semibold text-primary">
+              📖 Easy Step-by-Step Guide
+            </div>
             <h2 className="text-2xl sm:text-4xl font-extrabold tracking-tight">
-              Get Started in 3 Simple Steps
+              How Anyone Can Use StockFlow for Their Business
             </h2>
             <p className="text-sm sm:text-base text-muted-foreground">
-              Designed for effortless setup so your warehouse staff and managers can start working immediately.
+              No technical experience needed. Here is how simple it is to run your business with StockFlow:
             </p>
           </div>
 
-          <div className="grid gap-6 md:grid-cols-3">
-            <Card className="relative overflow-hidden border-border/80">
-              <CardContent className="p-6 space-y-3">
-                <div className="grid h-10 w-10 place-items-center rounded-xl bg-primary/10 text-primary font-bold text-base">
+          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
+            <Card className="relative border-border/80 hover:border-primary/50 transition">
+              <CardContent className="p-5 space-y-3">
+                <div className="grid h-10 w-10 place-items-center rounded-xl bg-primary/10 text-primary font-extrabold text-base">
                   1
                 </div>
-                <h3 className="font-bold text-base">Set Up Your Catalog & Limits</h3>
+                <h3 className="font-bold text-sm text-foreground">Add Your Products</h3>
                 <p className="text-xs text-muted-foreground leading-relaxed">
-                  Add products, SKUs, suppliers, and set custom warning thresholds for each item in your warehouse.
+                  Go to <strong className="text-foreground">Products</strong>, click "Add Product", and enter your item's name, price, starting quantity, and currency.
                 </p>
               </CardContent>
             </Card>
 
-            <Card className="relative overflow-hidden border-border/80">
-              <CardContent className="p-6 space-y-3">
-                <div className="grid h-10 w-10 place-items-center rounded-xl bg-primary/10 text-primary font-bold text-base">
+            <Card className="relative border-border/80 hover:border-primary/50 transition">
+              <CardContent className="p-5 space-y-3">
+                <div className="grid h-10 w-10 place-items-center rounded-xl bg-emerald-500/10 text-emerald-600 font-extrabold text-base">
                   2
                 </div>
-                <h3 className="font-bold text-base">Track Dispatches & Branch Returns</h3>
+                <h3 className="font-bold text-sm text-foreground">Record Stock Arrivals</h3>
                 <p className="text-xs text-muted-foreground leading-relaxed">
-                  Record Stock In and Stock Out. Audit goods sent to secondary branches with 1-click restock return approval.
+                  When new shipments arrive, go to <strong className="text-foreground">Stock In</strong>. Enter the quantity received to automatically increase your stock balance.
                 </p>
               </CardContent>
             </Card>
 
-            <Card className="relative overflow-hidden border-border/80">
-              <CardContent className="p-6 space-y-3">
-                <div className="grid h-10 w-10 place-items-center rounded-xl bg-primary/10 text-primary font-bold text-base">
+            <Card className="relative border-border/80 hover:border-primary/50 transition">
+              <CardContent className="p-5 space-y-3">
+                <div className="grid h-10 w-10 place-items-center rounded-xl bg-destructive/10 text-destructive font-extrabold text-base">
                   3
                 </div>
-                <h3 className="font-bold text-base">Automate Alerts & Staff Access</h3>
+                <h3 className="font-bold text-sm text-foreground">Record Dispatches & Sales</h3>
                 <p className="text-xs text-muted-foreground leading-relaxed">
-                  Receive persistent notifications on critical alerts and issue role-based logins to staff members securely.
+                  When goods leave for customer sales or branch transfers, go to <strong className="text-foreground">Stock Out</strong>. The red-flag guard prevents selling items you don't have.
+                </p>
+              </CardContent>
+            </Card>
+
+            <Card className="relative border-border/80 hover:border-primary/50 transition">
+              <CardContent className="p-5 space-y-3">
+                <div className="grid h-10 w-10 place-items-center rounded-xl bg-amber-500/10 text-amber-600 font-extrabold text-base">
+                  4
+                </div>
+                <h3 className="font-bold text-sm text-foreground">Approve Returned Stock</h3>
+                <p className="text-xs text-muted-foreground leading-relaxed">
+                  When branch stores or suppliers return goods back, go to <strong className="text-foreground">Transfers & Returns</strong> and click "Approve & Restock" to add them back.
                 </p>
               </CardContent>
             </Card>
@@ -341,9 +415,9 @@ export default function LandingPage() {
                 <div className="grid h-10 w-10 place-items-center rounded-xl bg-info/10 text-info mb-2">
                   <Globe className="h-5 w-5" />
                 </div>
-                <h4 className="font-bold text-sm">Universal Currency Customization</h4>
+                <h4 className="font-bold text-sm">Naira (₦) & Universal Currency Support</h4>
                 <p className="text-xs text-muted-foreground leading-relaxed">
-                  Supports $, €, £, ₦, CA$, ₹, JPY, and custom currency symbols tailored to your country's workspace.
+                  Supports ₦ Naira, $, €, £, CA$, ₹, JPY, and custom currency symbols tailored to your country's workspace.
                 </p>
               </CardContent>
             </Card>
@@ -424,7 +498,7 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* FOOTER */}
+      {/* FOOTER WITH SWEETVEX ATTRIBUTION */}
       <footer className="border-t py-8 px-4 sm:px-8 text-xs text-muted-foreground">
         <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
           <div className="flex items-center gap-2">
@@ -432,7 +506,7 @@ export default function LandingPage() {
               <Boxes className="h-3.5 w-3.5" />
             </div>
             <span className="font-bold text-foreground">StockFlow PRO</span>
-            <span>© 2026. All rights reserved.</span>
+            <span>© 2026. Created with <Heart className="h-3 w-3 text-destructive inline fill-destructive mx-0.5" /> by <strong className="text-foreground font-semibold">Sweetvex</strong>. All rights reserved.</span>
           </div>
           <div className="flex items-center gap-6">
             <Link href="/login" className="hover:text-foreground transition font-medium">Sign In</Link>

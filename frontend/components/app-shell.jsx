@@ -38,7 +38,7 @@ import {
 import { useState, useEffect, useRef } from "react";
 import { cn } from "@/lib/utils";
 import { getAuthUser, isAuthenticated, isRouteAllowed, logoutUser } from "@/lib/auth";
-import { applyTheme, getStoredTheme } from "@/lib/theme";
+import { applyTheme, getStoredTheme, formatCurrency } from "@/lib/theme";
 import { getProducts, getCategories, getSuppliers, getMovements, getTransfers, getContactRequests } from "@/lib/api";
 import { ProductIcon } from "@/components/product-icon";
 import { Input } from "@/components/ui/input";
@@ -387,7 +387,7 @@ function GlobalSearch() {
                           </div>
                         </div>
                         <div className="text-right shrink-0">
-                          <div className="font-semibold text-foreground">${Number(p.price).toFixed(2)}</div>
+                          <div className="font-semibold text-foreground">{formatCurrency(p.price)}</div>
                           <div className="text-[10px] text-muted-foreground font-medium">{p.stock} in stock</div>
                         </div>
                       </div>
@@ -986,7 +986,7 @@ export function AppShell({ children }) {
         <main className="flex-1 p-3 sm:p-6 lg:p-8 overflow-x-hidden">{children}</main>
 
         <footer className="border-t px-4 sm:px-6 py-4 text-xs text-muted-foreground flex flex-wrap items-center justify-between gap-2">
-          <div>© 2026 StockFlow. All rights reserved.</div>
+          <div>© 2026 StockFlow. Created by <strong className="text-foreground font-semibold">Sweetvex</strong>. All rights reserved.</div>
           <div className="flex gap-4">
             <Link href="/landing" className="hover:underline">Product Overview</Link>
             <span>v2.4.1</span>
