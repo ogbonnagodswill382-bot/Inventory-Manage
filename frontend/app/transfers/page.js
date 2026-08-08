@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Truck, RotateCcw, CheckCircle, Clock, Check, ArrowRight, ShieldCheck, CornerDownLeft } from "lucide-react";
+import { Truck, RotateCcw, CheckCircle, Clock, ShieldCheck, CornerDownLeft, Lock } from "lucide-react";
 import { PageHeader } from "@/components/app-shell";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -11,12 +11,13 @@ import { Textarea } from "@/components/ui/textarea";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { getTransfers, approveTransferReturn } from "@/lib/api";
-import { getAuthUser } from "@/lib/auth";
+import { getAuthUser, canApproveReturns } from "@/lib/auth";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 
 export default function TransfersPage() {
   const [transfers, setTransfers] = useState([]);
+  const [currentUser, setCurrentUser] = useState(null);
   const [selectedTransfer, setSelectedTransfer] = useState(null);
   const [approverName, setApproverName] = useState("");
   const [returnNotes, setReturnNotes] = useState("");
@@ -32,13 +33,22 @@ export default function TransfersPage() {
   useEffect(() => {
     loadData();
     const activeUser = getAuthUser();
+    setCurrentUser(activeUser);
     if (activeUser) setApproverName(activeUser.name);
   }, []);
 
+  const isApprover = canApproveReturns(currentUser?.role);
   const dispatchedList = transfers.filter((t) => t.status === "dispatched");
   const returnedList = transfers.filter((t) => t.status === "returned_to_stock");
 
   const handleOpenApproveModal = (transfer) => {
+    if (!isApprover) {
+      toast.error("Access Restricted!", {
+        description: `Your role (${currentUser?.role || "Staff"}) is Read-Only. Only Administrator and Inventory Manager can approve returned stock.`,
+      });
+      return;
+    }
+
     setSelectedTransfer(transfer);
     const activeUser = getAuthUser();
     setApproverName(activeUser?.name || "Administrator");
@@ -47,6 +57,13 @@ export default function TransfersPage() {
 
   const handleApproveReturn = async (e) => {
     e.preventDefault();
+    if (!isApprover) {
+      toast.error("Access Restricted!", {
+        description: `Your role (${currentUser?.role || "Staff"}) is Read-Only. Only Administrator and Inventory Manager can approve returned stock.`,
+      });
+      return;
+    }
+
     if (!selectedTransfer) return;
     if (!approverName.trim()) {
       toast.error("Please enter the Approver Name");
@@ -75,7 +92,7 @@ export default function TransfersPage() {
     <div className="space-y-6">
       <PageHeader
         title="Inter-Branch Transfers & Supplier Returns"
-        description="Audit outbound shipments to secondary branches or suppliers, and approve restock returns back to warehouse stock."
+        description="Audit outbound shipments to secondary branches or suppliers. Approvals restricted to Administrator & Inventory Manager."
       />
 
       {/* KPI Overview */}
@@ -184,8 +201,13 @@ export default function TransfersPage() {
 
       {/* TABLE & MOBILE LIST */}
       <Card>
-        <CardHeader className="py-4 px-4 sm:px-6">
+        <CardHeader className="py-4 px-4 sm:px-6 flex flex-row items-center justify-between">
           <CardTitle className="text-base font-semibold">Transfers & Returns Audit Log</CardTitle>
+          {!isApprover && (
+            <span className="inline-flex items-center gap-1 text-xs text-muted-foreground font-medium bg-muted px-2.5 py-1 rounded-md">
+              <Lock className="h-3.5 w-3.5 text-muted-foreground" /> Read-Only Mode ({currentUser?.role})
+            </span>
+          )}
         </CardHeader>
         <CardContent className="p-0">
           {/* MOBILE CARD LIST (< md) */}
@@ -223,11 +245,16 @@ export default function TransfersPage() {
                       )}
                     </div>
 
-                    {!isReturned && (
+                    {!isReturned && isApprover && (
                       <div className="pt-2">
                         <Button size="sm" className="w-full text-xs bg-emerald-600 hover:bg-emerald-700 text-white" onClick={() => handleOpenApproveModal(t)}>
                           <CornerDownLeft className="mr-1.5 h-3.5 w-3.5" /> Approve & Restock Return
                         </Button>
+                      </div>
+                    )}
+                    {!isReturned && !isApprover && (
+                      <div className="pt-1 text-[11px] text-muted-foreground font-medium flex items-center gap-1">
+                        <Lock className="h-3 w-3 text-muted-foreground" /> Approval restricted to Admin & Manager
                       </div>
                     )}
                   </div>
@@ -293,10 +320,14 @@ export default function TransfersPage() {
                           )}
                         </TableCell>
                         <TableCell className="text-right">
-                          {!isReturned ? (
+                          {!isReturned && isApprover ? (
                             <Button size="sm" className="text-xs bg-emerald-600 hover:bg-emerald-700 text-white" onClick={() => handleOpenApproveModal(t)}>
                               <CornerDownLeft className="mr-1.5 h-3.5 w-3.5" /> Approve & Restock
                             </Button>
+                          ) : !isReturned && !isApprover ? (
+                            <span className="text-xs text-muted-foreground font-medium flex items-center justify-end gap-1">
+                              <Lock className="h-3 w-3 text-muted-foreground" /> Read-Only (Manager Approval Required)
+                            </span>
                           ) : (
                             <span className="text-xs text-muted-foreground font-medium">Completed</span>
                           )}

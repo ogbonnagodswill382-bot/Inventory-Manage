@@ -29,6 +29,13 @@ export function isRouteAllowed(role, pathname) {
 }
 
 /**
+ * Check if user has permission to approve returns (Administrator or Inventory Manager).
+ */
+export function canApproveReturns(role) {
+  return role === "Administrator" || role === "Inventory Manager";
+}
+
+/**
  * Check if active user session exists in localStorage.
  */
 export function isAuthenticated() {
