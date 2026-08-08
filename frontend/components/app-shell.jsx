@@ -9,6 +9,7 @@ import {
   Truck,
   ArrowDownToLine,
   ArrowUpFromLine,
+  ArrowLeftRight,
   History,
   BarChart3,
   Bell,
@@ -38,7 +39,7 @@ import { useState, useEffect, useRef } from "react";
 import { cn } from "@/lib/utils";
 import { getAuthUser, isAuthenticated, isRouteAllowed, logoutUser } from "@/lib/auth";
 import { applyTheme, getStoredTheme } from "@/lib/theme";
-import { getProducts, getCategories, getSuppliers, getMovements, getContactRequests } from "@/lib/api";
+import { getProducts, getCategories, getSuppliers, getMovements, getTransfers, getContactRequests } from "@/lib/api";
 import { ProductIcon } from "@/components/product-icon";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -68,6 +69,7 @@ const nav = [
   { href: "/suppliers", label: "Suppliers", icon: Truck, group: "Inventory" },
   { href: "/stock-in", label: "Stock In", icon: ArrowDownToLine, group: "Stock" },
   { href: "/stock-out", label: "Stock Out", icon: ArrowUpFromLine, group: "Stock" },
+  { href: "/transfers", label: "Transfers & Returns", icon: ArrowLeftRight, group: "Stock" },
   { href: "/stock-history", label: "Stock History", icon: History, group: "Stock" },
   { href: "/reports", label: "Reports", icon: BarChart3, group: "Insights" },
   { href: "/alerts", label: "Alerts", icon: Bell, group: "Insights", danger: true },
@@ -328,11 +330,11 @@ function GlobalSearch() {
   };
 
   return (
-    <div ref={containerRef} className="relative flex-1 max-w-xs sm:max-w-md">
+    <div ref={containerRef} className="relative flex-1 max-w-[130px] min-w-0 xs:max-w-[180px] sm:max-w-md">
       <form onSubmit={handleSubmitSearch} className="relative">
         <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
         <Input
-          placeholder="Search products, SKUs, suppliers…"
+          placeholder="Search products..."
           value={query}
           onChange={(e) => {
             setQuery(e.target.value);
@@ -470,10 +472,11 @@ function Notifications() {
       const readList = getStoredReadNotifications();
       setReadIds(readList);
 
-      const [prods, moves, contactReqs] = await Promise.all([
+      const [prods, moves, contactReqs, transfersList] = await Promise.all([
         getProducts(),
         getMovements(),
         isAdmin ? getContactRequests() : Promise.resolve([]),
+        getTransfers(),
       ]);
       
       const list = [];
@@ -495,6 +498,27 @@ function Notifications() {
               category: "requests",
               link: `/users?name=${encodeURIComponent(r.name)}&email=${encodeURIComponent(r.email)}`,
             });
+          }
+        });
+      }
+
+      // Returned & Approved Goods Notifications
+      if (transfersList && Array.isArray(transfersList)) {
+        transfersList.forEach((t) => {
+          if (t.status === "returned_to_stock") {
+            const id = `transfer-ret-${t.id}`;
+            if (!clearedList.includes(id)) {
+              list.push({
+                id,
+                title: `Goods Returned & Restocked: ${t.product_name}`,
+                sub: `+${t.quantity} units from ${t.destination} · Approved by ${t.approved_by || 'Administrator'}`,
+                message: `Goods Return Audit Approved: ${t.quantity} units of "${t.product_name}" (SKU: ${t.product_sku}) were returned back from ${t.destination} and restocked directly into warehouse inventory. Approved by ${t.approved_by || 'Administrator'}.`,
+                time: t.returned_date || "Recently",
+                type: "success",
+                category: "activity",
+                link: "/transfers",
+              });
+            }
           }
         });
       }

@@ -169,6 +169,18 @@ export async function recordStockOut(payload) {
   });
 }
 
+// Branch Transfers & Supplier Returns Endpoints
+export async function getTransfers() {
+  return await fetchFromAPI('/transfers/');
+}
+
+export async function approveTransferReturn(id, payload) {
+  return await fetchFromAPI(`/transfers/${id}/approve_return/`, {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  });
+}
+
 // Reports & Valuation Endpoints
 export async function getReports() {
   return await fetchFromAPI('/reports/');
