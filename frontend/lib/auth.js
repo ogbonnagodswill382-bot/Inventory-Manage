@@ -3,16 +3,16 @@ const AUTH_STORAGE_KEY = "stockflow_auth_user";
 const ROLE_PERMISSIONS = {
   Administrator: [
     "/", "/products", "/categories", "/suppliers",
-    "/stock-in", "/stock-out", "/stock-history",
+    "/stock-in", "/stock-out", "/transfers", "/stock-history",
     "/reports", "/alerts", "/users", "/settings", "/profile"
   ],
   "Inventory Manager": [
     "/", "/products", "/categories", "/suppliers",
-    "/stock-in", "/stock-out", "/stock-history",
+    "/stock-in", "/stock-out", "/transfers", "/stock-history",
     "/reports", "/alerts", "/profile"
   ],
   "Warehouse Staff": [
-    "/", "/products", "/stock-in", "/stock-out",
+    "/", "/products", "/stock-in", "/stock-out", "/transfers",
     "/stock-history", "/alerts", "/profile"
   ],
   Viewer: [
