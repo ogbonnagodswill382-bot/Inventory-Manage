@@ -945,7 +945,7 @@ export function AppShell({ children }) {
     }
 
     if (!isAuthenticated()) {
-      router.push("/login");
+      router.push("/landing");
       return;
     }
 
