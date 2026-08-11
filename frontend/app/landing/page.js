@@ -42,8 +42,12 @@ export default function LandingPage() {
       a: "Manual notebooks and spreadsheets cause calculation mistakes, lost stock dispatches, and unexpected stockouts. StockFlow automatically keeps track of your stock count, warns you before items run out, handles Naira (₦) or Dollar ($) currency balances, and keeps your store data safe.",
     },
     {
+      q: "What roles can an Administrator assign to workers, and what access does each role get?",
+      a: "StockFlow provides 4 distinct permission levels:\n\n• Administrator: Full access over all warehouse settings, user accounts, system configuration, staff access requests, and return approvals.\n• Inventory Manager: Can add/edit products, categories, suppliers, record stock movements, and approve returned goods from branch stores or suppliers.\n• Warehouse Staff: Can log daily Stock In arrivals, record Stock Out dispatches, view stock alerts, and manage their profile.\n• Viewer: Read-only access to view inventory balances and audit logs without authorization to alter data.",
+    },
+    {
       q: "How does the Inter-Branch Transfer and Supplier Return Approval work?",
-      a: "When you send products out to a branch store or supplier, StockFlow records it as 'Dispatched Out'. When the store or supplier returns the goods to your warehouse, your Manager or Administrator clicks 'Approve & Restock' to automatically add the items (+Qty) directly back into your stock count.",
+      a: "When you send products out to a branch store or supplier, StockFlow records it as 'Dispatched Out'. When the store or supplier returns the goods to your warehouse, an Administrator or Inventory Manager clicks 'Approve & Restock' to automatically add the items (+Qty) directly back into your stock count.",
     },
     {
       q: "How do I give my staff members access to the app?",
@@ -459,7 +463,7 @@ export default function LandingPage() {
                     <ChevronDown className={cn("h-4 w-4 shrink-0 transition-transform", isOpen && "rotate-180 text-primary")} />
                   </button>
                   {isOpen && (
-                    <div className="px-4 sm:px-5 pb-5 text-xs sm:text-sm text-muted-foreground leading-relaxed border-t pt-3">
+                    <div className="px-4 sm:px-5 pb-5 text-xs sm:text-sm text-muted-foreground leading-relaxed border-t pt-3 whitespace-pre-line">
                       {faq.a}
                     </div>
                   )}
