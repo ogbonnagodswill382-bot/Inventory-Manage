@@ -15,15 +15,8 @@ import { getSuppliers, createSupplier, updateSupplier, deleteSupplier } from "@/
 import { getAuthUser } from "@/lib/auth";
 import { toast } from "sonner";
 
-const DEFAULT_SUPPLIERS = [
-  { id: 101, name: "Acme Global Electronics Inc.", contact: "Johnathan Smith", email: "orders@acmeglobal.com", phone: "+1 (555) 234-5678", address: "100 Enterprise Blvd, Tech Park, CA", productCount: 12, created_by: "Administrator", status: "active", date: "2026-08-10 09:15" },
-  { id: 102, name: "Zenith Supply Partners", contact: "Elena Rostova", email: "contact@zenithsupply.io", phone: "+1 (555) 876-5432", address: "450 Industrial Parkway, Chicago IL", productCount: 8, created_by: "Administrator", status: "active", date: "2026-08-10 14:00" },
-  { id: 103, name: "Apex Logistics & Materials Ltd", contact: "Marcus Vance", email: "support@apexlogistics.com", phone: "+1 (555) 345-6789", address: "88 Freight Way, Port Terminal, TX", productCount: 15, created_by: "Inventory Manager", status: "active", date: "2026-08-11 11:30" },
-  { id: 104, name: "Nexus Industrial Corp", contact: "Sarah Jenkins", email: "sales@nexusindustrial.net", phone: "+1 (555) 987-6543", address: "12 Manufacturing Rd, Detroit MI", productCount: 6, created_by: "Administrator", status: "active", date: "2026-08-12 10:00" },
-];
-
 export default function SuppliersPage() {
-  const [supplierList, setSupplierList] = useState(DEFAULT_SUPPLIERS);
+  const [supplierList, setSupplierList] = useState([]);
   
   // Search & Pagination for 1000+ high-volume records
   const [search, setSearch] = useState("");
@@ -43,10 +36,10 @@ export default function SuppliersPage() {
 
   async function loadData() {
     const apiData = await getSuppliers();
-    if (apiData && Array.isArray(apiData) && apiData.length > 0) {
+    if (apiData && Array.isArray(apiData)) {
       setSupplierList(apiData);
     } else {
-      setSupplierList(DEFAULT_SUPPLIERS);
+      setSupplierList([]);
     }
   }
 
@@ -97,38 +90,33 @@ export default function SuppliersPage() {
     let res;
     if (editSupplier) {
       res = await updateSupplier(editSupplier.id, payload);
-      setSupplierList((prev) =>
-        prev.map((item) => (item.id === editSupplier.id ? { ...item, ...payload } : item))
-      );
-      toast.success("Supplier updated successfully!");
+      if (res) toast.success("Supplier updated successfully!");
     } else {
       res = await createSupplier(payload);
-      const newSup = {
-        id: res?.id || Date.now(),
-        ...payload,
-        productCount: 0,
-        date: new Date().toISOString().replace("T", " ").slice(0, 16),
-      };
-      setSupplierList((prev) => [newSup, ...prev]);
-      toast.success("Supplier registered successfully!");
-      pushSystemNotification({
-        title: `New Supplier Added: ${name.trim()}`,
-        sub: email.trim() || contact.trim() || 'Supplier registered',
-        message: `Supplier "${name.trim()}" (${email.trim()}) was registered by ${activeUser?.name || 'Administrator'}.`,
-        type: "info",
-        category: "activity",
-        link: "/suppliers",
-      });
+      if (res && res.id) {
+        toast.success("Supplier registered in Django database!");
+        pushSystemNotification({
+          title: `New Supplier Added: ${name.trim()}`,
+          sub: email.trim() || contact.trim() || 'Supplier registered',
+          message: `Supplier "${name.trim()}" (${email.trim()}) was registered by ${activeUser?.name || 'Administrator'}.`,
+          type: "info",
+          category: "activity",
+          link: "/suppliers",
+        });
+      }
     }
 
-    setOpen(false);
-    await loadData();
+    if (res) {
+      setOpen(false);
+      await loadData();
+    } else {
+      toast.error("Failed to save supplier");
+    }
     setSubmitting(false);
   };
 
   const handleDeleteSupplier = async (id, sName) => {
     await deleteSupplier(id);
-    setSupplierList((prev) => prev.filter((item) => item.id !== id));
     toast.success(`Deleted supplier "${sName}"`);
     await loadData();
   };
@@ -155,7 +143,7 @@ export default function SuppliersPage() {
     <div className="space-y-6">
       <PageHeader
         title="Suppliers"
-        description="Manage vendor details and contact information with Date & Time tracking. Scalable for 1000+ vendors."
+        description="Manage vendor details and contact information with Date & Time tracking. Loaded 100% from Django database."
         actions={
           <Button onClick={handleOpenAddModal}>
             <Plus className="mr-2 h-4 w-4" /> Add supplier
@@ -169,7 +157,7 @@ export default function SuppliersPage() {
             <DialogHeader>
               <DialogTitle>{editSupplier ? "Edit supplier" : "New supplier"}</DialogTitle>
               <DialogDescription>
-                {editSupplier ? "Update vendor details in database." : "Add a vendor to link with inventory products."}
+                {editSupplier ? "Update vendor details in Django database." : "Add a vendor to Django database."}
               </DialogDescription>
             </DialogHeader>
 
@@ -296,7 +284,7 @@ export default function SuppliersPage() {
                   <TableRow>
                     <TableCell colSpan={7} className="text-center py-10 text-muted-foreground">
                       <Truck className="h-8 w-8 mx-auto mb-2 text-muted-foreground/40" />
-                      No suppliers found in database matching search.
+                      No suppliers found in Django database. Click "+ Add Supplier" to create one.
                     </TableCell>
                   </TableRow>
                 ) : (
@@ -322,7 +310,7 @@ export default function SuppliersPage() {
                           {s.date || s.created_at || "Just now"}
                         </div>
                       </TableCell>
-                      <TableCell><StatusBadge status={s.status} /></TableCell>
+                      <TableCell><StatusBadge status={s.status || "active"} /></TableCell>
                       <TableCell>
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>

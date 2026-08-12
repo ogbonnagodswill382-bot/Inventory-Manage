@@ -15,16 +15,8 @@ import { getCategories, createCategory, updateCategory, deleteCategory } from "@
 import { getAuthUser } from "@/lib/auth";
 import { toast } from "sonner";
 
-const DEFAULT_CATEGORIES = [
-  { id: 101, name: "Electronics & Hardware", description: "Microchips, laptops, monitors, power supplies, and tech accessories", productCount: 12, created_by: "Administrator", status: "active", date: "2026-08-10 10:30" },
-  { id: 102, name: "Office & Stationery", description: "Paper reams, notebooks, writing tools, and desk organizers", productCount: 8, created_by: "Administrator", status: "active", date: "2026-08-10 11:15" },
-  { id: 103, name: "Logistics & Packaging", description: "Corrugated boxes, bubble wrap, packing tapes, and shipping labels", productCount: 15, created_by: "Inventory Manager", status: "active", date: "2026-08-11 09:45" },
-  { id: 104, name: "Industrial & Tools", description: "Safety helmets, power drills, measure tapes, and protective gear", productCount: 6, created_by: "Administrator", status: "active", date: "2026-08-11 14:20" },
-  { id: 105, name: "Apparel & Textiles", description: "Work uniforms, safety vests, boots, and industrial gloves", productCount: 4, created_by: "Inventory Manager", status: "active", date: "2026-08-12 08:10" },
-];
-
 export default function CategoriesPage() {
-  const [categoryList, setCategoryList] = useState(DEFAULT_CATEGORIES);
+  const [categoryList, setCategoryList] = useState([]);
   
   // Search & Pagination for 1000+ high-volume records
   const [search, setSearch] = useState("");
@@ -40,10 +32,10 @@ export default function CategoriesPage() {
 
   async function loadData() {
     const apiData = await getCategories();
-    if (apiData && Array.isArray(apiData) && apiData.length > 0) {
+    if (apiData && Array.isArray(apiData)) {
       setCategoryList(apiData);
     } else {
-      setCategoryList(DEFAULT_CATEGORIES);
+      setCategoryList([]);
     }
   }
 
@@ -84,38 +76,33 @@ export default function CategoriesPage() {
     let res;
     if (editCategory) {
       res = await updateCategory(editCategory.id, payload);
-      setCategoryList((prev) =>
-        prev.map((item) => (item.id === editCategory.id ? { ...item, ...payload } : item))
-      );
-      toast.success("Category updated successfully!");
+      if (res) toast.success("Category updated successfully!");
     } else {
       res = await createCategory(payload);
-      const newCat = {
-        id: res?.id || Date.now(),
-        ...payload,
-        productCount: 0,
-        date: new Date().toISOString().replace("T", " ").slice(0, 16),
-      };
-      setCategoryList((prev) => [newCat, ...prev]);
-      toast.success("Category created successfully!");
-      pushSystemNotification({
-        title: `New Category Created: ${name.trim()}`,
-        sub: description.trim() || 'Category created',
-        message: `Category "${name.trim()}" was created by ${activeUser?.name || 'Administrator'}.`,
-        type: "info",
-        category: "activity",
-        link: "/categories",
-      });
+      if (res && res.id) {
+        toast.success("Category created in Django database!");
+        pushSystemNotification({
+          title: `New Category Created: ${name.trim()}`,
+          sub: description.trim() || 'Category created',
+          message: `Category "${name.trim()}" was created by ${activeUser?.name || 'Administrator'}.`,
+          type: "info",
+          category: "activity",
+          link: "/categories",
+        });
+      }
     }
 
-    setOpen(false);
-    await loadData();
+    if (res) {
+      setOpen(false);
+      await loadData();
+    } else {
+      toast.error("Failed to save category");
+    }
     setSubmitting(false);
   };
 
   const handleDeleteCategory = async (id, catName) => {
     await deleteCategory(id);
-    setCategoryList((prev) => prev.filter((item) => item.id !== id));
     toast.success(`Deleted category "${catName}"`);
     await loadData();
   };
@@ -139,7 +126,7 @@ export default function CategoriesPage() {
     <div className="space-y-6">
       <PageHeader
         title="Categories"
-        description="Group your products into organized categories with Date & Time tracking. Scalable for 1000+ entries."
+        description="Group your products into organized categories with Date & Time tracking. Loaded 100% from Django database."
         actions={
           <Button onClick={handleOpenAddModal}>
             <Plus className="mr-2 h-4 w-4" /> Add category
@@ -153,7 +140,7 @@ export default function CategoriesPage() {
             <DialogHeader>
               <DialogTitle>{editCategory ? "Edit category" : "New category"}</DialogTitle>
               <DialogDescription>
-                {editCategory ? "Update category attributes in database." : "Create a new category to group related products."}
+                {editCategory ? "Update category attributes in Django database." : "Create a new category in Django database."}
               </DialogDescription>
             </DialogHeader>
             <div className="space-y-4 py-4">
@@ -242,7 +229,7 @@ export default function CategoriesPage() {
                   <TableRow>
                     <TableCell colSpan={6} className="text-center py-10 text-muted-foreground">
                       <FolderTree className="h-8 w-8 mx-auto mb-2 text-muted-foreground/40" />
-                      No categories found in database matching search.
+                      No categories found in Django database. Click "+ Add Category" to create one.
                     </TableCell>
                   </TableRow>
                 ) : (
@@ -264,7 +251,7 @@ export default function CategoriesPage() {
                           {c.date || c.created_at || "Just now"}
                         </div>
                       </TableCell>
-                      <TableCell><StatusBadge status={c.status} /></TableCell>
+                      <TableCell><StatusBadge status={c.status || "active"} /></TableCell>
                       <TableCell>
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
