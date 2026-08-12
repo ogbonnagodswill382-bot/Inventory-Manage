@@ -19,7 +19,10 @@ export async function fetchFromAPI(endpoint, options = {}) {
     return await res.json();
   } catch (error) {
     console.warn(`API call error ${endpoint}:`, error.message);
-    return { error: error.message };
+    const msg = error.message.includes("Failed to fetch")
+      ? "Unable to reach backend API. Please deploy your backend on Render/Railway and set NEXT_PUBLIC_API_URL in Vercel."
+      : error.message;
+    return { error: msg };
   }
 }
 
@@ -87,13 +90,6 @@ export async function createCategory(payload) {
   });
 }
 
-export async function updateCategory(id, payload) {
-  return await fetchFromAPI(`/categories/${id}/`, {
-    method: 'PUT',
-    body: JSON.stringify(payload),
-  });
-}
-
 export async function deleteCategory(id) {
   return await fetchFromAPI(`/categories/${id}/`, {
     method: 'DELETE',
@@ -112,40 +108,8 @@ export async function createSupplier(payload) {
   });
 }
 
-export async function updateSupplier(id, payload) {
-  return await fetchFromAPI(`/suppliers/${id}/`, {
-    method: 'PUT',
-    body: JSON.stringify(payload),
-  });
-}
-
 export async function deleteSupplier(id) {
   return await fetchFromAPI(`/suppliers/${id}/`, {
-    method: 'DELETE',
-  });
-}
-
-// User Endpoints
-export async function getUsers() {
-  return await fetchFromAPI('/users/');
-}
-
-export async function createUser(payload) {
-  return await fetchFromAPI('/users/', {
-    method: 'POST',
-    body: JSON.stringify(payload),
-  });
-}
-
-export async function updateUser(id, payload) {
-  return await fetchFromAPI(`/users/${id}/`, {
-    method: 'PUT',
-    body: JSON.stringify(payload),
-  });
-}
-
-export async function deleteUser(id) {
-  return await fetchFromAPI(`/users/${id}/`, {
     method: 'DELETE',
   });
 }
@@ -155,33 +119,40 @@ export async function getMovements() {
   return await fetchFromAPI('/movements/');
 }
 
-export async function recordStockIn(payload) {
+export async function createStockIn(payload) {
   return await fetchFromAPI('/stock-in/', {
     method: 'POST',
     body: JSON.stringify(payload),
   });
 }
 
-export async function recordStockOut(payload) {
+export async function createStockOut(payload) {
   return await fetchFromAPI('/stock-out/', {
     method: 'POST',
     body: JSON.stringify(payload),
   });
 }
 
-// Branch Transfers & Supplier Returns Endpoints
+// Inter-Branch Transfer & Supplier Returns Endpoints
 export async function getTransfers() {
   return await fetchFromAPI('/transfers/');
 }
 
-export async function approveTransferReturn(id, payload) {
+export async function createTransfer(payload) {
+  return await fetchFromAPI('/transfers/', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function approveTransferReturn(id, payload = {}) {
   return await fetchFromAPI(`/transfers/${id}/approve_return/`, {
     method: 'POST',
     body: JSON.stringify(payload),
   });
 }
 
-// Reports & Valuation Endpoints
-export async function getReports() {
-  return await fetchFromAPI('/reports/');
+// Dashboard Reports & Summary Endpoint
+export async function getDashboardSummary() {
+  return await fetchFromAPI('/reports/summary/');
 }
