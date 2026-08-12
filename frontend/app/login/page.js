@@ -1,8 +1,9 @@
 "use client";
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
-import { Boxes, Lock, Mail, User, Shield, Send, ArrowRight, CheckCircle2, Crown, Sparkles } from "lucide-react";
+import { useState, useEffect, Suspense } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import Link from "next/link";
+import { Boxes, Lock, Mail, User, Shield, Send, ArrowRight, ArrowLeft, CheckCircle2, Crown, Sparkles } from "lucide-react";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -15,11 +16,19 @@ import { setAuthUser } from "@/lib/auth";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 
-export default function LoginPage() {
+function LoginPageContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
 
   // Mode tab state: "signin" | "register"
   const [activeTab, setActiveTab] = useState("signin");
+
+  useEffect(() => {
+    const mode = searchParams?.get("mode");
+    if (mode === "register") {
+      setActiveTab("register");
+    }
+  }, [searchParams]);
 
   // Sign In states
   const [loginEmail, setLoginEmail] = useState("");
@@ -58,19 +67,25 @@ export default function LoginPage() {
       toast.success("Welcome back!", { description: `Logged in as ${res.user.name} (${res.user.role}).` });
       router.push("/");
     } else {
-      toast.error(res?.error || "Invalid login credentials. Please try again.");
+      toast.error("Login Failed", { description: res?.error || "Invalid credentials provided." });
     }
     setLoginSubmitting(false);
   };
 
   const handleRegisterSubmit = async (e) => {
     e.preventDefault();
-    if (!regName.trim() || !regEmail.trim() || !regPassword.trim()) {
-      toast.error("Please fill in all required fields");
+    if (!regName || !regEmail || !regPassword || !regConfirmPassword) {
+      toast.error("Please fill in all registration fields");
       return;
     }
+
     if (regPassword !== regConfirmPassword) {
-      toast.error("Passwords do not match");
+      toast.error("Passwords do not match", { description: "Please re-type your password." });
+      return;
+    }
+
+    if (regPassword.length < 6) {
+      toast.error("Password too weak", { description: "Password must be at least 6 characters." });
       return;
     }
 
@@ -78,26 +93,26 @@ export default function LoginPage() {
     const res = await registerUser({
       name: regName.trim(),
       email: regEmail.trim(),
-      password: regPassword.trim(),
-      role: "Administrator",
+      password: regPassword,
+      role: "Administrator", // First-time self-registered account becomes Administrator
     });
 
     if (res && res.user) {
       setAuthUser(res.user);
-      toast.success("Administrator account registered!", { description: `Welcome ${res.user.name}! Redirecting to dashboard...` });
-      setTimeout(() => {
-        router.push("/");
-      }, 800);
+      toast.success("Registration Successful!", {
+        description: `Your Company Admin profile for ${res.user.name} has been created.`,
+      });
+      router.push("/");
     } else {
-      toast.error(res?.error || "Failed to register account.");
+      toast.error("Registration Failed", { description: res?.error || "Could not complete registration." });
     }
     setRegSubmitting(false);
   };
 
-  const handleContactAdminSubmit = async (e) => {
+  const handleContactSubmit = async (e) => {
     e.preventDefault();
-    if (!contactName.trim() || !contactEmail.trim() || !contactMessage.trim()) {
-      toast.error("Please fill out all fields in the request");
+    if (!contactName || !contactEmail || !contactMessage) {
+      toast.error("Please fill in all fields before sending");
       return;
     }
 
@@ -108,14 +123,16 @@ export default function LoginPage() {
       message: contactMessage.trim(),
     });
 
-    if (res && !res.error) {
-      toast.success("Request sent to Administrator!", { description: "The admin (owner@stockflow.io) will review your access request." });
+    if (res && (res.id || res.message)) {
+      toast.success("Request Submitted", {
+        description: "Your request has been logged. An Administrator will review and contact you.",
+      });
+      setContactOpen(false);
       setContactName("");
       setContactEmail("");
       setContactMessage("");
-      setContactOpen(false);
     } else {
-      toast.error(res?.error || "Failed to send request.");
+      toast.error("Failed to send request", { description: res?.error || "Please try again later." });
     }
     setContactSubmitting(false);
   };
@@ -127,14 +144,22 @@ export default function LoginPage() {
         <div className="absolute -top-24 -left-24 h-96 w-96 rounded-full bg-primary/10 blur-3xl" />
         <div className="absolute -bottom-24 -right-24 h-96 w-96 rounded-full bg-chart-4/10 blur-3xl" />
         
-        <div className="relative z-10 flex items-center gap-3">
-          <div className="grid h-10 w-10 place-items-center rounded-xl bg-gradient-to-br from-primary to-primary/80 text-primary-foreground shadow-md shadow-primary/20">
-            <Boxes className="h-6 w-6" />
+        <div className="relative z-10 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="grid h-10 w-10 place-items-center rounded-xl bg-gradient-to-br from-primary to-primary/80 text-primary-foreground shadow-md shadow-primary/20">
+              <Boxes className="h-6 w-6" />
+            </div>
+            <div>
+              <div className="font-bold text-lg leading-tight">StockFlow</div>
+              <div className="text-xs text-muted-foreground">Inventory Suite & Management</div>
+            </div>
           </div>
-          <div>
-            <div className="font-bold text-lg leading-tight">StockFlow</div>
-            <div className="text-xs text-muted-foreground">Inventory Suite & Management</div>
-          </div>
+
+          <Button asChild variant="outline" size="sm" className="text-xs font-semibold gap-1.5 rounded-full border-border/80 hover:bg-primary/10 hover:text-primary transition">
+            <Link href="/landing">
+              <ArrowLeft className="h-3.5 w-3.5" /> Back to Landing Page
+            </Link>
+          </Button>
         </div>
 
         <div className="relative z-10 max-w-md space-y-5">
@@ -177,8 +202,17 @@ export default function LoginPage() {
       {/* Right form container */}
       <div className="flex items-center justify-center p-6 md:p-12">
         <div className="w-full max-w-md space-y-6">
+          <div className="flex items-center justify-between border-b pb-3">
+            <Button asChild variant="ghost" size="sm" className="text-xs font-semibold text-muted-foreground hover:text-primary gap-1.5 p-0 hover:bg-transparent cursor-pointer">
+              <Link href="/landing">
+                <ArrowLeft className="h-4 w-4" /> Back to Landing Page
+              </Link>
+            </Button>
+            <span className="text-[11px] text-muted-foreground font-mono">StockFlow v2.4.1</span>
+          </div>
+
           <div className="space-y-2 text-center lg:text-left">
-            <div className="lg:hidden flex items-center justify-center gap-2 mb-4">
+            <div className="lg:hidden flex items-center justify-center gap-2 mb-2">
               <div className="grid h-9 w-9 place-items-center rounded-xl bg-primary text-primary-foreground">
                 <Boxes className="h-5 w-5" />
               </div>
@@ -188,15 +222,15 @@ export default function LoginPage() {
             <p className="text-sm text-muted-foreground">Sign in to your account or register a company admin profile.</p>
           </div>
 
-          {/* Custom mode switcher */}
-          <div className="grid grid-cols-2 p-1 rounded-lg bg-muted text-sm font-medium">
+          {/* Mode Switcher Tabs */}
+          <div className="grid grid-cols-2 gap-1 rounded-xl bg-muted p-1 text-xs">
             <button
               type="button"
               onClick={() => setActiveTab("signin")}
               className={cn(
-                "py-2 rounded-md transition-all text-center",
+                "py-2 rounded-lg font-semibold transition cursor-pointer",
                 activeTab === "signin"
-                  ? "bg-background text-foreground shadow-xs font-semibold"
+                  ? "bg-background text-foreground shadow-xs"
                   : "text-muted-foreground hover:text-foreground"
               )}
             >
@@ -206,9 +240,9 @@ export default function LoginPage() {
               type="button"
               onClick={() => setActiveTab("register")}
               className={cn(
-                "py-2 rounded-md transition-all text-center flex items-center justify-center gap-1.5",
+                "py-2 rounded-lg font-semibold transition cursor-pointer flex items-center justify-center gap-1",
                 activeTab === "register"
-                  ? "bg-background text-foreground shadow-xs font-semibold"
+                  ? "bg-background text-foreground shadow-xs"
                   : "text-muted-foreground hover:text-foreground"
               )}
             >
@@ -216,213 +250,294 @@ export default function LoginPage() {
             </button>
           </div>
 
-          {/* SIGN IN VIEW */}
+          {/* TAB 1: SIGN IN FORM */}
           {activeTab === "signin" && (
-            <Card className="border-muted/60 shadow-sm">
+            <Card className="border-border/80 shadow-md">
               <form onSubmit={handleLoginSubmit}>
                 <CardHeader className="space-y-1">
                   <CardTitle className="text-lg">Sign In</CardTitle>
-                  <CardDescription>Enter your account credentials to access your dashboard.</CardDescription>
+                  <CardDescription className="text-xs">
+                    Enter your credentials to access your inventory workspace.
+                  </CardDescription>
                 </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="space-y-2">
+
+                <CardContent className="space-y-4 text-xs">
+                  <div className="space-y-1.5">
                     <Label htmlFor="login-email">Email or Username</Label>
                     <div className="relative">
-                      <Mail className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                      <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                       <Input
                         id="login-email"
-                        placeholder="owner or your_email@company.com"
-                        className="pl-9"
+                        type="text"
+                        placeholder="admin@stockflow.com"
                         value={loginEmail}
                         onChange={(e) => setLoginEmail(e.target.value)}
+                        className="pl-9 text-xs sm:text-sm"
                         required
                       />
                     </div>
                   </div>
 
-                  <div className="space-y-2">
+                  <div className="space-y-1.5">
                     <div className="flex items-center justify-between">
                       <Label htmlFor="login-password">Password</Label>
+                      <button
+                        type="button"
+                        onClick={() => setContactOpen(true)}
+                        className="text-[11px] font-semibold text-primary hover:underline"
+                      >
+                        Need account access?
+                      </button>
                     </div>
                     <div className="relative">
-                      <Lock className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                      <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                       <Input
                         id="login-password"
                         type="password"
                         placeholder="••••••••"
-                        className="pl-9"
                         value={loginPassword}
                         onChange={(e) => setLoginPassword(e.target.value)}
+                        className="pl-9 text-xs sm:text-sm"
                         required
                       />
                     </div>
                   </div>
 
-                  <div className="flex items-center space-x-2">
+                  <div className="flex items-center gap-2 pt-1">
                     <Checkbox id="remember" defaultChecked />
                     <Label htmlFor="remember" className="text-xs font-normal text-muted-foreground cursor-pointer">
-                      Remember me for 30 days
+                      Keep me logged in on this device
                     </Label>
                   </div>
                 </CardContent>
-                <CardFooter className="flex flex-col gap-3">
-                  <Button type="submit" className="w-full" disabled={loginSubmitting}>
-                    {loginSubmitting ? "Signing in..." : "Sign In"} <ArrowRight className="ml-2 h-4 w-4" />
+
+                <CardFooter className="flex flex-col space-y-3 pt-2">
+                  <Button type="submit" className="w-full text-xs font-semibold" disabled={loginSubmitting}>
+                    {loginSubmitting ? "Signing in..." : "Sign In to Workspace"}
+                    {!loginSubmitting && <ArrowRight className="ml-2 h-4 w-4" />}
                   </Button>
+
+                  <div className="text-center text-[11px] text-muted-foreground">
+                    New company administrator?{" "}
+                    <button
+                      type="button"
+                      onClick={() => setActiveTab("register")}
+                      className="font-bold text-primary hover:underline"
+                    >
+                      Register Company Profile →
+                    </button>
+                  </div>
                 </CardFooter>
               </form>
             </Card>
           )}
 
-          {/* REGISTER ADMIN VIEW */}
+          {/* TAB 2: REGISTER COMPANY ADMIN FORM */}
           {activeTab === "register" && (
-            <Card className="border-muted/60 shadow-sm">
+            <Card className="border-primary/30 shadow-md bg-gradient-to-b from-card to-primary/5">
               <form onSubmit={handleRegisterSubmit}>
                 <CardHeader className="space-y-1">
-                  <CardTitle className="text-lg flex items-center gap-2">
-                    <Crown className="h-5 w-5 text-primary" /> Register Admin Account
-                  </CardTitle>
+                  <div className="flex items-center gap-1.5 text-xs font-bold text-primary uppercase tracking-wider">
+                    <Crown className="h-4 w-4" /> Create Company Account
+                  </div>
+                  <CardTitle className="text-lg">Register Administrator</CardTitle>
                   <CardDescription className="text-xs">
-                    Public registration creates Company Administrator accounts. Staff accounts (Warehouse Staff, Inventory Managers) are created and issued by your Administrator inside the app.
+                    Create a top administrator profile to set up your business inventory workspace.
                   </CardDescription>
                 </CardHeader>
-                <CardContent className="space-y-3 text-sm">
-                  <div className="space-y-1">
-                    <Label htmlFor="reg-name">Administrator Full Name</Label>
+
+                <CardContent className="space-y-3.5 text-xs">
+                  <div className="space-y-1.5">
+                    <Label htmlFor="reg-name">Full Name / Business Name</Label>
                     <div className="relative">
-                      <User className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                      <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                       <Input
                         id="reg-name"
-                        placeholder="e.g. Sarah Kim"
-                        className="pl-9"
+                        type="text"
+                        placeholder="e.g. Sarah Connor / Zenith Warehouse"
                         value={regName}
                         onChange={(e) => setRegName(e.target.value)}
+                        className="pl-9 text-xs sm:text-sm"
                         required
                       />
                     </div>
                   </div>
 
-                  <div className="space-y-1">
-                    <Label htmlFor="reg-email">Admin Email Address</Label>
+                  <div className="space-y-1.5">
+                    <Label htmlFor="reg-email">Work Email</Label>
                     <div className="relative">
-                      <Mail className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                      <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                       <Input
                         id="reg-email"
                         type="email"
-                        placeholder="admin@company.com"
-                        className="pl-9"
+                        placeholder="sarah@zenithstore.com"
                         value={regEmail}
                         onChange={(e) => setRegEmail(e.target.value)}
+                        className="pl-9 text-xs sm:text-sm"
                         required
                       />
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-2 gap-2">
-                    <div className="space-y-1">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div className="space-y-1.5">
                       <Label htmlFor="reg-pass">Password</Label>
-                      <Input
-                        id="reg-pass"
-                        type="password"
-                        placeholder="••••••••"
-                        value={regPassword}
-                        onChange={(e) => setRegPassword(e.target.value)}
-                        required
-                      />
+                      <div className="relative">
+                        <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                        <Input
+                          id="reg-pass"
+                          type="password"
+                          placeholder="Min 6 chars"
+                          value={regPassword}
+                          onChange={(e) => setRegPassword(e.target.value)}
+                          className="pl-9 text-xs sm:text-sm"
+                          required
+                        />
+                      </div>
                     </div>
-                    <div className="space-y-1">
+
+                    <div className="space-y-1.5">
                       <Label htmlFor="reg-confirm">Confirm Password</Label>
-                      <Input
-                        id="reg-confirm"
-                        type="password"
-                        placeholder="••••••••"
-                        value={regConfirmPassword}
-                        onChange={(e) => setRegConfirmPassword(e.target.value)}
-                        required
-                      />
+                      <div className="relative">
+                        <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                        <Input
+                          id="reg-confirm"
+                          type="password"
+                          placeholder="Re-type pass"
+                          value={regConfirmPassword}
+                          onChange={(e) => setRegConfirmPassword(e.target.value)}
+                          className="pl-9 text-xs sm:text-sm"
+                          required
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="rounded-lg border bg-muted/40 p-2.5 text-[11px] text-muted-foreground flex items-start gap-2">
+                    <Shield className="h-4 w-4 text-primary shrink-0 mt-0.5" />
+                    <div>
+                      Self-registered accounts automatically receive <strong className="text-foreground">Administrator</strong> permissions. Additional staff can be added inside under /users.
                     </div>
                   </div>
                 </CardContent>
-                <CardFooter>
-                  <Button type="submit" className="w-full" disabled={regSubmitting}>
-                    {regSubmitting ? "Creating Admin Account..." : "Register Company Admin"}
+
+                <CardFooter className="flex flex-col space-y-3 pt-1">
+                  <Button type="submit" className="w-full text-xs font-semibold" disabled={regSubmitting}>
+                    {regSubmitting ? "Creating Profile..." : "Register & Launch Workspace"}
+                    {!regSubmitting && <ArrowRight className="ml-2 h-4 w-4" />}
                   </Button>
+
+                  <div className="text-center text-[11px] text-muted-foreground">
+                    Already have an account?{" "}
+                    <button
+                      type="button"
+                      onClick={() => setActiveTab("signin")}
+                      className="font-bold text-primary hover:underline"
+                    >
+                      Sign In instead →
+                    </button>
+                  </div>
                 </CardFooter>
               </form>
             </Card>
           )}
 
-          {/* DONT HAVE AN ACCOUNT? CONTACT ADMIN */}
-          <div className="pt-2 text-center text-xs text-muted-foreground space-y-2">
-            <div>
-              Staff member without login details?{" "}
-              <Dialog open={contactOpen} onOpenChange={setContactOpen}>
-                <DialogTrigger asChild>
-                  <button type="button" className="font-semibold text-primary underline hover:text-primary/80 transition cursor-pointer">
-                    Contact Admin
-                  </button>
-                </DialogTrigger>
-                <DialogContent className="max-w-md">
-                  <form onSubmit={handleContactAdminSubmit}>
-                    <DialogHeader>
-                      <DialogTitle className="flex items-center gap-2">
-                        <Shield className="h-5 w-5 text-primary" /> Contact Administrator
-                      </DialogTitle>
-                      <DialogDescription>
-                        Send an access request message directly to the administrator (<span className="font-medium text-foreground">owner@stockflow.io</span>).
-                      </DialogDescription>
-                    </DialogHeader>
-
-                    <div className="space-y-3 py-3 text-sm">
-                      <div className="space-y-1">
-                        <Label htmlFor="c-name">Your Full Name</Label>
-                        <Input
-                          id="c-name"
-                          placeholder="e.g. Jordan Lee"
-                          value={contactName}
-                          onChange={(e) => setContactName(e.target.value)}
-                          required
-                        />
-                      </div>
-                      <div className="space-y-1">
-                        <Label htmlFor="c-email">Your Email</Label>
-                        <Input
-                          id="c-email"
-                          type="email"
-                          placeholder="jordan@company.com"
-                          value={contactEmail}
-                          onChange={(e) => setContactEmail(e.target.value)}
-                          required
-                        />
-                      </div>
-                      <div className="space-y-1">
-                        <Label htmlFor="c-msg">Message / Role Requested</Label>
-                        <Textarea
-                          id="c-msg"
-                          placeholder="Please create an account for me as Warehouse Staff."
-                          rows={3}
-                          value={contactMessage}
-                          onChange={(e) => setContactMessage(e.target.value)}
-                          required
-                        />
-                      </div>
-                    </div>
-
-                    <DialogFooter>
-                      <Button type="button" variant="outline" onClick={() => setContactOpen(false)}>
-                        Cancel
-                      </Button>
-                      <Button type="submit" disabled={contactSubmitting}>
-                        <Send className="mr-2 h-4 w-4" /> {contactSubmitting ? "Sending..." : "Send Request"}
-                      </Button>
-                    </DialogFooter>
-                  </form>
-                </DialogContent>
-              </Dialog>
+          {/* Bottom helper card for staff access */}
+          <div className="rounded-xl border bg-muted/30 p-4 text-xs space-y-2">
+            <div className="font-semibold text-foreground flex items-center justify-between">
+              <span>Are you a warehouse worker or staff member?</span>
+              <button
+                type="button"
+                onClick={() => setContactOpen(true)}
+                className="text-primary hover:underline font-bold text-[11px] flex items-center gap-1"
+              >
+                Request Access <Send className="h-3 w-3" />
+              </button>
             </div>
+            <p className="text-muted-foreground text-[11px]">
+              If your manager has already registered your company workspace, click "Request Access" to send a direct message to your Administrator.
+            </p>
           </div>
         </div>
       </div>
+
+      {/* CONTACT ADMINISTRATOR MODAL DIALOG */}
+      <Dialog open={contactOpen} onOpenChange={setContactOpen}>
+        <DialogContent className="max-w-md">
+          <form onSubmit={handleContactSubmit}>
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2 text-base">
+                <Send className="h-4 w-4 text-primary" /> Request Staff Access
+              </DialogTitle>
+              <DialogDescription className="text-xs">
+                Send a direct message to your Company Administrator to request worker login credentials.
+              </DialogDescription>
+            </DialogHeader>
+
+            <div className="space-y-3 py-4 text-xs">
+              <div className="space-y-1.5">
+                <Label htmlFor="contact-name">Your Full Name</Label>
+                <Input
+                  id="contact-name"
+                  type="text"
+                  placeholder="e.g. John Doe"
+                  value={contactName}
+                  onChange={(e) => setContactName(e.target.value)}
+                  className="text-xs sm:text-sm"
+                  required
+                />
+              </div>
+
+              <div className="space-y-1.5">
+                <Label htmlFor="contact-email">Your Work Email</Label>
+                <Input
+                  id="contact-email"
+                  type="email"
+                  placeholder="john@company.com"
+                  value={contactEmail}
+                  onChange={(e) => setContactEmail(e.target.value)}
+                  className="text-xs sm:text-sm"
+                  required
+                />
+              </div>
+
+              <div className="space-y-1.5">
+                <Label htmlFor="contact-msg">Message to Administrator</Label>
+                <Textarea
+                  id="contact-msg"
+                  rows={3}
+                  placeholder="Hello Admin, I have joined the warehouse team as Inventory Manager. Please send me my login details."
+                  value={contactMessage}
+                  onChange={(e) => setContactMessage(e.target.value)}
+                  className="text-xs sm:text-sm"
+                  required
+                />
+              </div>
+            </div>
+
+            <DialogFooter className="flex items-center justify-end gap-2">
+              <Button type="button" variant="outline" size="sm" onClick={() => setContactOpen(false)}>
+                Cancel
+              </Button>
+              <Button type="submit" size="sm" disabled={contactSubmitting}>
+                {contactSubmitting ? "Sending..." : "Send Request to Admin"}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
     </div>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen w-full flex items-center justify-center bg-background text-muted-foreground text-sm font-medium">
+        Loading authentication page...
+      </div>
+    }>
+      <LoginPageContent />
+    </Suspense>
   );
 }

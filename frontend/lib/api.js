@@ -52,6 +52,31 @@ export async function getContactRequests() {
   return await fetchFromAPI('/contact-admin/');
 }
 
+// User Endpoints
+export async function getUsers() {
+  return await fetchFromAPI('/users/');
+}
+
+export async function createUser(payload) {
+  return await fetchFromAPI('/users/', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function updateUser(id, payload) {
+  return await fetchFromAPI(`/users/${id}/`, {
+    method: 'PUT',
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function deleteUser(id) {
+  return await fetchFromAPI(`/users/${id}/`, {
+    method: 'DELETE',
+  });
+}
+
 // Product Endpoints
 export async function getProducts(params = {}) {
   const query = new URLSearchParams(params).toString();
@@ -90,6 +115,13 @@ export async function createCategory(payload) {
   });
 }
 
+export async function updateCategory(id, payload) {
+  return await fetchFromAPI(`/categories/${id}/`, {
+    method: 'PUT',
+    body: JSON.stringify(payload),
+  });
+}
+
 export async function deleteCategory(id) {
   return await fetchFromAPI(`/categories/${id}/`, {
     method: 'DELETE',
@@ -104,6 +136,13 @@ export async function getSuppliers() {
 export async function createSupplier(payload) {
   return await fetchFromAPI('/suppliers/', {
     method: 'POST',
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function updateSupplier(id, payload) {
+  return await fetchFromAPI(`/suppliers/${id}/`, {
+    method: 'PUT',
     body: JSON.stringify(payload),
   });
 }
@@ -126,12 +165,16 @@ export async function createStockIn(payload) {
   });
 }
 
+export const recordStockIn = createStockIn;
+
 export async function createStockOut(payload) {
   return await fetchFromAPI('/stock-out/', {
     method: 'POST',
     body: JSON.stringify(payload),
   });
 }
+
+export const recordStockOut = createStockOut;
 
 // Inter-Branch Transfer & Supplier Returns Endpoints
 export async function getTransfers() {
@@ -156,3 +199,5 @@ export async function approveTransferReturn(id, payload = {}) {
 export async function getDashboardSummary() {
   return await fetchFromAPI('/reports/summary/');
 }
+
+export const getReports = getDashboardSummary;
