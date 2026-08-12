@@ -30,7 +30,7 @@ import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { ProductIcon } from "@/components/product-icon";
 import { getReports, getProducts, getMovements } from "@/lib/api";
-import { formatCurrency } from "@/lib/theme";
+import { formatCurrency, getAppSettings } from "@/lib/theme";
 import { cn } from "@/lib/utils";
 
 const tooltipStyle = {
@@ -38,6 +38,7 @@ const tooltipStyle = {
   border: "1px solid var(--color-border)",
   borderRadius: 12,
   fontSize: 12,
+  boxShadow: "0 10px 15px -3px rgba(0, 0, 0, 0.1)",
 };
 
 function buildStockTrendData(movements = []) {
@@ -121,8 +122,12 @@ export default function Dashboard() {
   const [recentMovements, setRecentMovements] = useState([]);
   const [stockTrend, setStockTrend] = useState([]);
   const [categoryMix, setCategoryMix] = useState([]);
+  const [companyName, setCompanyName] = useState("");
 
   useEffect(() => {
+    const s = getAppSettings();
+    if (s && s.companyName) setCompanyName(s.companyName);
+
     async function loadData() {
       const [rep, prods, moves] = await Promise.all([
         getReports(),
@@ -190,8 +195,12 @@ export default function Dashboard() {
   return (
     <div className="space-y-4 sm:space-y-6">
       <PageHeader
-        title="Inventory Overview"
-        description="Real-time stock levels, movement trends, and alert monitoring."
+        title={companyName ? `${companyName} — Inventory Overview` : "Inventory Overview"}
+        description={
+          companyName
+            ? `Real-time stock levels, movement trends, and alert monitoring for ${companyName}.`
+            : "Real-time stock levels, movement trends, and alert monitoring."
+        }
         actions={
           <div className="flex items-center gap-2 w-full sm:w-auto">
             <Button asChild variant="outline" size="sm" className="flex-1 sm:flex-initial text-xs sm:text-sm">
@@ -208,28 +217,31 @@ export default function Dashboard() {
 
       {/* KPI Cards (Optimized for Galaxy Z Fold 5 folded & unfolded screens) */}
       <div className="grid gap-3 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
-        {kpis.map((k) => {
-          const Icon = k.icon;
+        {kpis.map((kpi) => {
+          const Icon = kpi.icon;
           return (
-            <Card key={k.label} className="relative overflow-hidden border-border/80 shadow-2xs">
-              <CardContent className="p-3.5 sm:p-5">
+            <Card key={kpi.label} className="relative overflow-hidden transition-all hover:border-primary/50">
+              <CardContent className="p-4 sm:p-5">
                 <div className="flex items-center justify-between">
-                  <div className={`grid h-9 w-9 sm:h-10 sm:w-10 place-items-center rounded-xl ${k.tint}`}>
+                  <div className={cn("grid h-9 w-9 sm:h-10 sm:w-10 place-items-center rounded-xl font-bold", kpi.tint)}>
                     <Icon className="h-4 w-4 sm:h-5 sm:w-5" />
                   </div>
                   <span
-                    className={`inline-flex items-center text-xs font-semibold ${
-                      k.up ? "text-success" : "text-destructive"
-                    }`}
+                    className={cn(
+                      "inline-flex items-center gap-0.5 text-[11px] font-semibold rounded-full px-2 py-0.5",
+                      kpi.up ? "text-success bg-success/10" : "text-destructive bg-destructive/10"
+                    )}
                   >
-                    {k.up ? <TrendingUp className="mr-1 h-3.5 w-3.5" /> : <TrendingDown className="mr-1 h-3.5 w-3.5" />}
-                    {k.trend}
+                    {kpi.up ? <TrendingUp className="h-3 w-3" /> : <TrendingDown className="h-3 w-3" />}
+                    {kpi.trend}
                   </span>
                 </div>
                 <div className="mt-3 sm:mt-4">
-                  <div className="text-xl sm:text-2xl font-bold tracking-tight">{k.value}</div>
-                  <div className="text-xs text-muted-foreground mt-0.5 font-medium">{k.label}</div>
-                  <div className="text-[11px] text-muted-foreground/80 mt-1 font-medium truncate">{k.sub}</div>
+                  <div className="text-2xl sm:text-3xl font-extrabold tracking-tight">{kpi.value}</div>
+                  <div className="mt-1 flex items-center justify-between text-xs text-muted-foreground">
+                    <span className="font-medium text-foreground/80">{kpi.label}</span>
+                    <span className="truncate max-w-[120px]">{kpi.sub}</span>
+                  </div>
                 </div>
               </CardContent>
             </Card>
@@ -237,212 +249,196 @@ export default function Dashboard() {
         })}
       </div>
 
-      {/* Analytics Charts Row */}
-      <div className="grid gap-4 lg:grid-cols-3">
-        <Card className="lg:col-span-2">
-          <CardHeader className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 sm:gap-0 pb-2">
-            <CardTitle className="text-sm sm:text-base font-semibold">Stock Movement Trend (Live Database)</CardTitle>
-            <span className="text-[11px] sm:text-xs text-muted-foreground font-medium">Aggregated Records</span>
+      {/* Charts Grid */}
+      <div className="grid gap-4 sm:gap-6 grid-cols-1 lg:grid-cols-7">
+        {/* Stock Movement Trends Chart */}
+        <Card className="lg:col-span-4">
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
+            <div>
+              <CardTitle className="text-base font-semibold">Stock Movement Trends</CardTitle>
+              <p className="text-xs text-muted-foreground mt-0.5">Weekly Inbound vs Outbound inventory activity</p>
+            </div>
+            <div className="flex items-center gap-3 text-xs">
+              <div className="flex items-center gap-1.5">
+                <span className="h-2.5 w-2.5 rounded-full bg-primary" />
+                <span className="text-muted-foreground">Stock In</span>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <span className="h-2.5 w-2.5 rounded-full bg-chart-4" />
+                <span className="text-muted-foreground">Stock Out</span>
+              </div>
+            </div>
           </CardHeader>
-          <CardContent className="p-2 sm:p-6 pt-0">
-            <div className="h-56 sm:h-64 w-full">
+          <CardContent className="pt-4">
+            <div className="h-[240px] sm:h-[280px] w-full">
               <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={stockTrend} margin={{ left: -25, right: 5, top: 10 }}>
+                <AreaChart data={stockTrend} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
                   <defs>
-                    <linearGradient id="inGrad" x1="0" y1="0" x2="0" y2="1">
+                    <linearGradient id="colorIn" x1="0" y1="0" x2="0" y2="1">
                       <stop offset="5%" stopColor="var(--color-primary)" stopOpacity={0.4} />
-                      <stop offset="95%" stopColor="var(--color-primary)" stopOpacity={0} />
+                      <stop offset="95%" stopColor="var(--color-primary)" stopOpacity={0.0} />
                     </linearGradient>
-                    <linearGradient id="outGrad" x1="0" y1="0" x2="0" y2="1">
+                    <linearGradient id="colorOut" x1="0" y1="0" x2="0" y2="1">
                       <stop offset="5%" stopColor="var(--color-chart-4)" stopOpacity={0.4} />
-                      <stop offset="95%" stopColor="var(--color-chart-4)" stopOpacity={0} />
+                      <stop offset="95%" stopColor="var(--color-chart-4)" stopOpacity={0.0} />
                     </linearGradient>
                   </defs>
-                  <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" vertical={false} />
-                  <XAxis dataKey="day" stroke="var(--color-muted-foreground)" fontSize={11} tickLine={false} axisLine={false} />
-                  <YAxis stroke="var(--color-muted-foreground)" fontSize={11} tickLine={false} axisLine={false} />
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--color-border)" opacity={0.5} />
+                  <XAxis dataKey="day" axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: "var(--color-muted-foreground)" }} />
+                  <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: "var(--color-muted-foreground)" }} />
                   <Tooltip contentStyle={tooltipStyle} />
-                  <Area type="monotone" dataKey="in" stroke="var(--color-primary)" strokeWidth={2} fillOpacity={1} fill="url(#inGrad)" name="Stock In (+)" />
-                  <Area type="monotone" dataKey="out" stroke="var(--color-chart-4)" strokeWidth={2} fillOpacity={1} fill="url(#outGrad)" name="Stock Out (-)" />
+                  <Area type="monotone" dataKey="in" name="Stock In" stroke="var(--color-primary)" strokeWidth={2} fillOpacity={1} fill="url(#colorIn)" />
+                  <Area type="monotone" dataKey="out" name="Stock Out" stroke="var(--color-chart-4)" strokeWidth={2} fillOpacity={1} fill="url(#colorOut)" />
                 </AreaChart>
               </ResponsiveContainer>
             </div>
           </CardContent>
         </Card>
 
-        <Card>
+        {/* Category Share Mix Chart */}
+        <Card className="lg:col-span-3">
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm sm:text-base font-semibold">Stock by Category</CardTitle>
+            <CardTitle className="text-base font-semibold">Category Inventory Share</CardTitle>
+            <p className="text-xs text-muted-foreground mt-0.5">Stock volume distribution by product category</p>
           </CardHeader>
-          <CardContent className="p-2 sm:p-6 pt-0">
-            <div className="h-56 sm:h-64 w-full">
+          <CardContent className="pt-2">
+            <div className="h-[200px] sm:h-[220px] w-full">
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
                   <Pie
                     data={categoryMix}
-                    innerRadius={45}
-                    outerRadius={75}
+                    cx="50%"
+                    cy="50%"
+                    innerRadius={55}
+                    outerRadius={80}
                     paddingAngle={3}
                     dataKey="value"
                   >
-                    {categoryMix.map((entry) => (
-                      <Cell key={entry.name} fill={entry.color} stroke="var(--color-card)" strokeWidth={2} />
+                    {categoryMix.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={entry.color} stroke="var(--color-background)" strokeWidth={2} />
                     ))}
                   </Pie>
                   <Tooltip contentStyle={tooltipStyle} />
                 </PieChart>
               </ResponsiveContainer>
             </div>
+            <div className="mt-2 grid grid-cols-2 gap-2 text-xs">
+              {categoryMix.slice(0, 4).map((c) => (
+                <div key={c.name} className="flex items-center gap-1.5 truncate">
+                  <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ backgroundColor: c.color }} />
+                  <span className="truncate font-medium text-foreground">{c.name}</span>
+                  <span className="text-muted-foreground text-[11px]">({c.value})</span>
+                </div>
+              ))}
+            </div>
           </CardContent>
         </Card>
       </div>
 
-      {/* Tables & Mobile Card Section (Dual Responsive Layout for Galaxy Z Fold 5 & Mobile Devices) */}
-      <div className="grid gap-4 lg:grid-cols-2">
-        
-        {/* INVENTORY PRODUCTS CARD */}
-        <Card className="overflow-hidden">
-          <CardHeader className="flex flex-row items-center justify-between py-3.5 px-4 sm:px-6 border-b">
-            <CardTitle className="text-sm sm:text-base font-semibold">Inventory Products</CardTitle>
-            <Button asChild variant="ghost" size="sm" className="text-xs h-8 px-2">
-              <Link href="/products">View all <ArrowUpRight className="ml-1 h-3.5 w-3.5" /></Link>
+      {/* Bottom Grid: Low Stock Alert & Recent Activity */}
+      <div className="grid gap-4 sm:gap-6 grid-cols-1 lg:grid-cols-2">
+        {/* Urgent Low Stock Items */}
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
+            <div>
+              <CardTitle className="text-base font-semibold flex items-center gap-2">
+                <AlertTriangle className="h-4 w-4 text-warning" /> Low Stock & Reorder Alerts
+              </CardTitle>
+              <p className="text-xs text-muted-foreground mt-0.5">Products requiring immediate reordering</p>
+            </div>
+            <Button asChild variant="ghost" size="xs" className="text-xs font-semibold text-primary">
+              <Link href="/alerts">View All →</Link>
             </Button>
           </CardHeader>
-
-          <CardContent className="p-0">
-            {/* MOBILE & Z FOLD 5 COVER SCREEN CARD LIST (< md) */}
-            <div className="block md:hidden divide-y">
-              {productsList.slice(0, 5).map((p) => (
-                <div key={p.id} className="p-3.5 space-y-2 hover:bg-muted/40 transition">
-                  <div className="flex items-center justify-between gap-2">
-                    <div className="flex items-center gap-2.5 min-w-0">
-                      <ProductIcon name={p.name} categoryName={p.category_name} emoji={p.emoji} className="h-8 w-8 shrink-0 rounded-lg" iconClassName="h-4 w-4" />
-                      <div className="min-w-0">
-                        <div className="font-semibold text-xs text-foreground truncate">{p.name}</div>
-                        <div className="text-[10px] text-muted-foreground font-mono truncate">{p.sku}</div>
-                      </div>
-                    </div>
-                    <div className="text-right shrink-0">
-                      <div className="font-bold text-xs text-foreground">{formatCurrency(p.price)}</div>
-                      <div className="text-[10px] text-muted-foreground font-medium">{p.stock} units</div>
-                    </div>
-                  </div>
-                  <div className="flex items-center justify-between pt-1 border-t border-border/40 text-[11px]">
-                    <span className="text-muted-foreground font-medium">{p.category_name || "General"}</span>
-                    <StatusBadge status={p.status} />
-                  </div>
-                </div>
-              ))}
-            </div>
-
-            {/* DESKTOP TABLE VIEW (≥ md) */}
-            <div className="hidden md:block overflow-x-auto w-full scrollbar-thin">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead className="text-xs">Product</TableHead>
-                    <TableHead className="text-right text-xs">Price</TableHead>
-                    <TableHead className="text-right text-xs">Stock</TableHead>
-                    <TableHead className="text-xs">Status</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {productsList.slice(0, 5).map((p) => (
-                    <TableRow key={p.id}>
-                      <TableCell className="py-2.5">
+          <CardContent className="pt-2">
+            {productsList.filter((p) => p.stock <= p.threshold).length === 0 ? (
+              <div className="p-6 text-center text-xs text-muted-foreground space-y-1">
+                <div className="font-semibold text-success text-sm">🟢 All inventory levels healthy</div>
+                <div>No items currently below reorder thresholds.</div>
+              </div>
+            ) : (
+              <div className="divide-y text-xs">
+                {productsList
+                  .filter((p) => p.stock <= p.threshold)
+                  .slice(0, 4)
+                  .map((p) => {
+                    const isOut = p.stock === 0;
+                    return (
+                      <div key={p.id} className="py-2.5 flex items-center justify-between gap-2">
                         <div className="flex items-center gap-2.5 min-w-0">
-                          <ProductIcon name={p.name} categoryName={p.category_name} emoji={p.emoji} className="h-7 w-7 shrink-0" iconClassName="h-3.5 w-3.5" />
+                          <ProductIcon name={p.name} categoryName={p.category_name} emoji={p.emoji} className="h-8 w-8 rounded-lg" iconClassName="h-4 w-4" />
                           <div className="min-w-0">
-                            <div className="font-medium text-xs sm:text-sm truncate max-w-[130px] lg:max-w-[180px]">{p.name}</div>
-                            <div className="text-[10px] text-muted-foreground font-mono truncate">{p.sku}</div>
+                            <div className="font-semibold truncate text-foreground">{p.name}</div>
+                            <div className="text-[11px] text-muted-foreground font-mono">{p.sku}</div>
                           </div>
                         </div>
-                      </TableCell>
-                      <TableCell className="text-right font-medium text-xs sm:text-sm whitespace-nowrap">{formatCurrency(p.price)}</TableCell>
-                      <TableCell className="text-right font-semibold text-xs sm:text-sm whitespace-nowrap">{p.stock}</TableCell>
-                      <TableCell className="whitespace-nowrap"><StatusBadge status={p.status} /></TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
+
+                        <div className="flex items-center gap-3 shrink-0">
+                          <StatusBadge status={isOut ? "out_of_stock" : "low_stock"} />
+                          <div className="text-right">
+                            <div className="font-bold text-foreground">{p.stock} left</div>
+                            <div className="text-[10px] text-muted-foreground">Min: {p.threshold}</div>
+                          </div>
+                          <Button asChild size="xs" variant="outline" className="h-7 px-2">
+                            <Link href={`/stock-in?product=${p.id}`}>Reorder</Link>
+                          </Button>
+                        </div>
+                      </div>
+                    );
+                  })}
+              </div>
+            )}
           </CardContent>
         </Card>
 
-        {/* RECENT MOVEMENTS CARD */}
-        <Card className="overflow-hidden">
-          <CardHeader className="flex flex-row items-center justify-between py-3.5 px-4 sm:px-6 border-b">
-            <CardTitle className="text-sm sm:text-base font-semibold">Recent Movements</CardTitle>
-            <Button asChild variant="ghost" size="sm" className="text-xs h-8 px-2">
-              <Link href="/stock-history">Full log <ArrowUpRight className="ml-1 h-3.5 w-3.5" /></Link>
+        {/* Recent Stock Movement History */}
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
+            <div>
+              <CardTitle className="text-base font-semibold">Recent Stock Movements</CardTitle>
+              <p className="text-xs text-muted-foreground mt-0.5">Latest warehouse transactions & dispatches</p>
+            </div>
+            <Button asChild variant="ghost" size="xs" className="text-xs font-semibold text-primary">
+              <Link href="/stock-history">Full Audit →</Link>
             </Button>
           </CardHeader>
-
-          <CardContent className="p-0">
-            {/* MOBILE & Z FOLD 5 COVER SCREEN CARD LIST (< md) */}
-            <div className="block md:hidden divide-y">
-              {recentMovements.length === 0 ? (
-                <div className="p-6 text-center text-xs text-muted-foreground">No stock movements recorded yet.</div>
-              ) : (
-                recentMovements.map((m) => (
-                  <div key={m.id} className="p-3.5 space-y-1.5 hover:bg-muted/40 transition">
-                    <div className="flex items-center justify-between gap-2">
-                      <div className="font-semibold text-xs text-foreground truncate">{m.product_name}</div>
-                      <span className={cn(
-                        "text-[11px] font-bold px-2 py-0.5 rounded-full shrink-0",
-                        m.type === "in" ? "bg-success/15 text-success" : "bg-destructive/15 text-destructive"
-                      )}>
-                        {m.type === "in" ? `+${m.quantity} Stock In` : `-${m.quantity} Stock Out`}
-                      </span>
+          <CardContent className="pt-2">
+            {recentMovements.length === 0 ? (
+              <div className="p-6 text-center text-xs text-muted-foreground">
+                No recent stock movement logs found.
+              </div>
+            ) : (
+              <div className="divide-y text-xs">
+                {recentMovements.map((m) => (
+                  <div key={m.id} className="py-2.5 flex items-center justify-between gap-2">
+                    <div className="min-w-0 flex-1">
+                      <div className="font-semibold truncate text-foreground">{m.product_name}</div>
+                      <div className="text-[11px] text-muted-foreground flex items-center gap-2 mt-0.5">
+                        <span>By {m.user}</span>
+                        <span>•</span>
+                        <span>{m.date}</span>
+                      </div>
                     </div>
-                    <div className="flex items-center justify-between text-[11px] text-muted-foreground pt-1">
-                      <span className="truncate">By {m.user} · {m.date}</span>
-                      <span className="font-semibold text-foreground shrink-0 ml-2">Balance: {m.balance}</span>
+
+                    <div className="text-right shrink-0">
+                      <div
+                        className={cn(
+                          "font-bold text-sm",
+                          m.type === "in" ? "text-success" : "text-destructive"
+                        )}
+                      >
+                        {m.type === "in" ? "+" : "-"}{m.quantity} units
+                      </div>
+                      <div className="text-[10px] text-muted-foreground capitalize">
+                        {m.type === "in" ? "Stock Inbound" : "Dispatched Out"}
+                      </div>
                     </div>
                   </div>
-                ))
-              )}
-            </div>
-
-            {/* DESKTOP TABLE VIEW (≥ md) */}
-            <div className="hidden md:block overflow-x-auto w-full scrollbar-thin">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead className="text-xs">Movement</TableHead>
-                    <TableHead className="text-right text-xs">Qty</TableHead>
-                    <TableHead className="text-right text-xs">Balance</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {recentMovements.length === 0 ? (
-                    <TableRow>
-                      <TableCell colSpan={3} className="text-center py-6 text-xs text-muted-foreground">
-                        No stock movements recorded yet.
-                      </TableCell>
-                    </TableRow>
-                  ) : (
-                    recentMovements.map((m) => (
-                      <TableRow key={m.id}>
-                        <TableCell className="py-2.5">
-                          <div className="font-medium text-xs sm:text-sm truncate max-w-[130px] lg:max-w-[180px]">{m.product_name}</div>
-                          <div className="text-[10px] text-muted-foreground truncate">
-                            {m.type === "in" ? "Stock In" : "Stock Out"} · {m.user} · {m.date}
-                          </div>
-                        </TableCell>
-                        <TableCell className={`text-right font-semibold text-xs sm:text-sm whitespace-nowrap ${m.type === "in" ? "text-success" : "text-destructive"}`}>
-                          {m.type === "in" ? `+${m.quantity}` : `-${m.quantity}`}
-                        </TableCell>
-                        <TableCell className="text-right font-medium text-xs sm:text-sm text-muted-foreground whitespace-nowrap">{m.balance}</TableCell>
-                      </TableRow>
-                    ))
-                  )}
-                </TableBody>
-              </Table>
-            </div>
+                ))}
+              </div>
+            )}
           </CardContent>
         </Card>
-
       </div>
     </div>
   );

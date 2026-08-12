@@ -34,11 +34,12 @@ import {
   Info,
   ExternalLink,
   ShieldAlert,
+  Mail,
 } from "lucide-react";
 import { useState, useEffect, useRef } from "react";
 import { cn } from "@/lib/utils";
 import { getAuthUser, isAuthenticated, isRouteAllowed, logoutUser } from "@/lib/auth";
-import { applyTheme, getStoredTheme, formatCurrency } from "@/lib/theme";
+import { applyTheme, getStoredTheme, formatCurrency, getAppSettings } from "@/lib/theme";
 import { getProducts, getCategories, getSuppliers, getMovements, getTransfers, getContactRequests } from "@/lib/api";
 import { ProductIcon } from "@/components/product-icon";
 import { Input } from "@/components/ui/input";
@@ -484,6 +485,14 @@ function Notifications() {
   const [readIds, setReadIds] = useState([]);
   const [activeTab, setActiveTab] = useState("all");
   const [selectedNotification, setSelectedNotification] = useState(null);
+  const [configuredEmail, setConfiguredEmail] = useState("");
+
+  useEffect(() => {
+    const s = getAppSettings();
+    if (s && s.contactEmail) {
+      setConfiguredEmail(s.contactEmail);
+    }
+  }, []);
 
   useEffect(() => {
     async function loadNotifications() {
@@ -736,6 +745,18 @@ function Notifications() {
             </button>
           </div>
 
+          {configuredEmail && (
+            <div className="bg-primary/10 border-b px-3.5 py-2 text-[11px] text-primary flex items-center justify-between font-medium">
+              <span className="flex items-center gap-1.5 truncate">
+                <Mail className="h-3.5 w-3.5 shrink-0" />
+                Email Digest: <strong className="font-semibold text-foreground truncate">{configuredEmail}</strong>
+              </span>
+              <Badge variant="outline" className="text-[9px] px-1 py-0 bg-background border-primary/30 shrink-0">
+                Dispatched ✉️
+              </Badge>
+            </div>
+          )}
+
           {/* LIST */}
           <div className="max-h-80 overflow-y-auto">
             {filteredNotifications.length === 0 ? (
@@ -835,6 +856,17 @@ function Notifications() {
                   <div className="font-semibold text-primary">Applicant Contact Info:</div>
                   <div>Name: <span className="font-medium text-foreground">{selectedNotification.applicantName}</span></div>
                   <div>Email: <span className="font-medium text-foreground">{selectedNotification.applicantEmail}</span></div>
+                </div>
+              )}
+
+              {configuredEmail && (
+                <div className="rounded-lg border p-3 text-xs space-y-1 bg-emerald-500/10 border-emerald-500/30 text-emerald-700 dark:text-emerald-300">
+                  <div className="font-semibold flex items-center gap-1.5">
+                    <Mail className="h-3.5 w-3.5" /> Company Contact Email Alert Status:
+                  </div>
+                  <div>
+                    An instant notification alert for this event was auto-dispatched to <strong className="underline text-foreground">{configuredEmail}</strong>.
+                  </div>
                 </div>
               )}
             </div>
