@@ -649,7 +649,12 @@ function Notifications() {
       if (customList && Array.isArray(customList)) {
         customList.forEach((c) => {
           if (!clearedList.includes(c.id)) {
-            list.unshift(c);
+            // Staff Access Requests are restricted EXCLUSIVELY to Company Administrators
+            if (c.category === "requests" || c.type === "contact" || c.title?.includes("Staff Access Request")) {
+              if (isAdmin) list.unshift(c);
+            } else {
+              list.unshift(c);
+            }
           }
         });
       }

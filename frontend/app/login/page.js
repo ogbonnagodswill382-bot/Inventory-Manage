@@ -12,6 +12,8 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
 import { loginUser, registerUser, sendContactAdmin } from "@/lib/api";
+import { pushSystemNotification } from "@/components/app-shell";
+import { getAppSettings } from "@/lib/theme";
 import { setAuthUser } from "@/lib/auth";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
@@ -117,16 +119,30 @@ function LoginPageContent() {
     }
 
     setContactSubmitting(true);
+    const settings = getAppSettings();
+    const targetCompanyEmail = settings?.contactEmail || "contact@company.com";
+
     const res = await sendContactAdmin({
       name: contactName.trim(),
       email: contactEmail.trim(),
       message: contactMessage.trim(),
+      company_email: targetCompanyEmail,
     });
 
     if (res && (res.id || res.message)) {
-      toast.success("Request Submitted", {
-        description: "Your request has been logged. An Administrator will review and contact you.",
+      toast.success("Access Request Delivered to Company Email! ✉️", {
+        description: `Sent to company address (${targetCompanyEmail}). Logged exclusively for Company Administrators.`,
       });
+
+      pushSystemNotification({
+        title: `Staff Access Request: ${contactName.trim()}`,
+        sub: `${contactEmail.trim()} → ${targetCompanyEmail}`,
+        message: `Staff Access Request from ${contactName.trim()} (${contactEmail.trim()}): "${contactMessage.trim()}". Direct email alert dispatched to ${targetCompanyEmail}.`,
+        type: "contact",
+        category: "requests",
+        link: `/users?name=${encodeURIComponent(contactName.trim())}&email=${encodeURIComponent(contactEmail.trim())}`,
+      });
+
       setContactOpen(false);
       setContactName("");
       setContactEmail("");
