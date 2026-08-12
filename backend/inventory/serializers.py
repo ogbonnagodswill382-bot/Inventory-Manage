@@ -3,20 +3,22 @@ from .models import Category, Supplier, Product, StockMovement, BranchTransfer, 
 
 class CategorySerializer(serializers.ModelSerializer):
     productCount = serializers.SerializerMethodField()
+    date = serializers.DateTimeField(source='created_at', format='%Y-%m-%d %H:%M', read_only=True)
 
     class Meta:
         model = Category
-        fields = ['id', 'name', 'description', 'productCount', 'status', 'created_by', 'created_at']
+        fields = ['id', 'name', 'description', 'productCount', 'status', 'created_by', 'created_at', 'date']
 
     def get_productCount(self, obj):
         return obj.products.count()
 
 class SupplierSerializer(serializers.ModelSerializer):
     productCount = serializers.SerializerMethodField()
+    date = serializers.DateTimeField(source='created_at', format='%Y-%m-%d %H:%M', read_only=True)
 
     class Meta:
         model = Supplier
-        fields = ['id', 'name', 'contact', 'email', 'phone', 'address', 'productCount', 'status', 'created_by', 'created_at']
+        fields = ['id', 'name', 'contact', 'email', 'phone', 'address', 'productCount', 'status', 'created_by', 'created_at', 'date']
 
     def get_productCount(self, obj):
         return obj.products.count()

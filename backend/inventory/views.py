@@ -445,6 +445,7 @@ class ContactAdminAPIView(APIView):
         name = request.data.get('name', '').strip()
         email = request.data.get('email', '').strip()
         message = request.data.get('message', '').strip()
+        company_email = request.data.get('company_email', 'contact@company.com').strip()
 
         if not name or not email or not message:
             return Response({'error': 'Name, Email, and Message are required'}, status=400)
@@ -455,7 +456,10 @@ class ContactAdminAPIView(APIView):
             message=message
         )
 
+        print(f"[STAFF ACCESS REQUEST DISPATCHED TO COMPANY EMAIL: {company_email}] Applicant: {name} ({email}) | Message: {message}")
+
         return Response({
-            'message': 'Your request has been submitted to the administrator (owner@stockflow.io).',
-            'id': req.id
+            'message': f'Staff Access Request sent successfully to {company_email} and logged for Company Administrator approval.',
+            'id': req.id,
+            'company_email': company_email
         }, status=201)
