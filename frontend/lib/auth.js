@@ -89,14 +89,14 @@ export function setAuthUser(user) {
 }
 
 /**
- * Clear session and log out. Redirects first-time/logged-out visitors to public landing page.
+ * Clear session and log out. Redirects user to login/signup page.
  */
 export function logoutUser() {
   if (typeof window === "undefined") return;
   try {
     localStorage.removeItem(AUTH_STORAGE_KEY);
-    window.location.href = "/landing";
+    window.location.href = "/login";
   } catch (e) {
-    window.location.href = "/landing";
+    window.location.href = "/login";
   }
 }
