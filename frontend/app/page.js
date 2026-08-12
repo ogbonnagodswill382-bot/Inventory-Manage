@@ -129,7 +129,7 @@ export default function Dashboard() {
         getProducts(),
         getMovements(),
       ]);
-      if (rep) setMetrics(rep);
+      if (rep && !rep.error) setMetrics(rep);
       if (prods && Array.isArray(prods)) {
         setProductsList(prods);
         setCategoryMix(buildCategoryMixData(prods));
@@ -142,10 +142,16 @@ export default function Dashboard() {
     loadData();
   }, []);
 
+  const safeTotalStock = Number(metrics?.total_stock ?? 0);
+  const safeTotalProducts = Number(metrics?.total_products ?? 0);
+  const safeLowStock = Number(metrics?.low_stock_count ?? 0);
+  const safeOutOfStock = Number(metrics?.out_of_stock_count ?? 0);
+  const safeValuation = Number(metrics?.inventory_valuation ?? 0);
+
   const kpis = [
     {
       label: "Total Products",
-      value: metrics.total_products,
+      value: safeTotalProducts.toLocaleString(),
       sub: "Active catalog items",
       trend: "+12.4%",
       up: true,
@@ -154,7 +160,7 @@ export default function Dashboard() {
     },
     {
       label: "Low Stock Items",
-      value: metrics.low_stock_count,
+      value: safeLowStock.toLocaleString(),
       sub: "Below threshold",
       trend: "-2.1%",
       up: false,
@@ -163,7 +169,7 @@ export default function Dashboard() {
     },
     {
       label: "Out of Stock",
-      value: metrics.out_of_stock_count,
+      value: safeOutOfStock.toLocaleString(),
       sub: "Urgent reorder needed",
       trend: "0%",
       up: true,
@@ -172,8 +178,8 @@ export default function Dashboard() {
     },
     {
       label: "Total Units in Stock",
-      value: metrics.total_stock.toLocaleString(),
-      sub: `Valued at ${formatCurrency(metrics.inventory_valuation)}`,
+      value: safeTotalStock.toLocaleString(),
+      sub: `Valued at ${formatCurrency(safeValuation)}`,
       trend: "+8.2%",
       up: true,
       icon: Boxes,

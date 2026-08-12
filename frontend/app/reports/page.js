@@ -128,10 +128,10 @@ export default function ReportsPage() {
       ["Total Catalog Products", `${reportData.total_products} items`],
       ["Total Product Categories", `${reportData.total_categories} categories`],
       ["Total Active Suppliers", `${reportData.total_suppliers} suppliers`],
-      ["Total Stock Units in Warehouse", `${reportData.total_stock.toLocaleString()} units`],
-      ["Low Stock Warning Items", `${reportData.low_stock_count} items`],
-      ["Out of Stock Critical Items", `${reportData.out_of_stock_count} items`],
-      ["Total Inventory Valuation", formatCurrency(reportData.inventory_valuation)],
+      ["Total Stock Units in Warehouse", `${Number(reportData.total_stock ?? 0).toLocaleString()} units`],
+      ["Low Stock Warning Items", `${reportData.low_stock_count ?? 0} items`],
+      ["Out of Stock Critical Items", `${reportData.out_of_stock_count ?? 0} items`],
+      ["Total Inventory Valuation", formatCurrency(reportData.inventory_valuation ?? 0)],
     ];
     exportToPDF("StockFlow Inventory Valuation Summary Report", headers, rows);
     toast.success("Opening PDF Print Window for Valuation Report");
@@ -162,7 +162,7 @@ export default function ReportsPage() {
               <div>
                 <div className="text-xs text-muted-foreground font-medium">Inventory Valuation</div>
                 <div className="text-2xl font-bold mt-1 text-emerald-600 dark:text-emerald-400">
-                  {formatCurrency(reportData.inventory_valuation)}
+                  {formatCurrency(reportData.inventory_valuation ?? 0)}
                 </div>
               </div>
               <div className="grid h-10 w-10 place-items-center rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
@@ -175,7 +175,7 @@ export default function ReportsPage() {
             <CardContent className="p-5 flex items-center justify-between">
               <div>
                 <div className="text-xs text-muted-foreground font-medium">Total Units in Stock</div>
-                <div className="text-2xl font-bold mt-1">{reportData.total_stock.toLocaleString()}</div>
+                <div className="text-2xl font-bold mt-1">{Number(reportData.total_stock ?? 0).toLocaleString()}</div>
               </div>
               <div className="grid h-10 w-10 place-items-center rounded-xl bg-primary/10 text-primary">
                 <Package className="h-5 w-5" />
