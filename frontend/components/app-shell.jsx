@@ -78,6 +78,38 @@ const nav = [
   { href: "/settings", label: "Settings", icon: Settings, group: "Admin" },
 ];
 
+export function getStoredSystemNotifications() {
+  if (typeof window === "undefined") return [];
+  try {
+    const raw = localStorage.getItem("stockflow_custom_activity_notifications");
+    return raw ? JSON.parse(raw) : [];
+  } catch {
+    return [];
+  }
+}
+
+export function pushSystemNotification({ title, sub, message, type = "info", category = "activity", link = "/" }) {
+  if (typeof window === "undefined") return;
+  try {
+    const list = getStoredSystemNotifications();
+    const newId = `custom-act-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
+    const newNotification = {
+      id: newId,
+      title,
+      sub,
+      message,
+      type,
+      category,
+      link,
+      time: "Just now",
+    };
+    list.unshift(newNotification);
+    localStorage.setItem("stockflow_custom_activity_notifications", JSON.stringify(list.slice(0, 30)));
+  } catch (e) {
+    console.error("Failed to push notification:", e);
+  }
+}
+
 function getStoredClearedNotifications() {
   if (typeof window === "undefined") return [];
   try {
@@ -609,6 +641,15 @@ function Notifications() {
               category: "activity",
               link: "/stock-history",
             });
+          }
+        });
+      }
+
+      const customList = getStoredSystemNotifications();
+      if (customList && Array.isArray(customList)) {
+        customList.forEach((c) => {
+          if (!clearedList.includes(c.id)) {
+            list.unshift(c);
           }
         });
       }

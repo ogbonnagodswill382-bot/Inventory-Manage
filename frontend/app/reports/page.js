@@ -6,7 +6,7 @@ import { PageHeader } from "@/components/app-shell";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Bar, BarChart, CartesianGrid, Cell, Line, LineChart, Pie, PieChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
-import { getReports, getProducts, getMovements } from "@/lib/api";
+import { getReports, getProducts, getMovements, getCategories, getSuppliers } from "@/lib/api";
 import { exportToCSV, exportToPDF } from "@/lib/export";
 import { formatCurrency } from "@/lib/theme";
 import { cn } from "@/lib/utils";
@@ -88,15 +88,38 @@ export default function ReportsPage() {
 
   useEffect(() => {
     async function loadData() {
-      const [rep, prods, moves] = await Promise.all([
+      const [rep, prods, moves, cats, sups] = await Promise.all([
         getReports(),
         getProducts(),
         getMovements(),
+        getCategories(),
+        getSuppliers(),
       ]);
-      if (rep) setReportData(rep);
-      if (prods && Array.isArray(prods)) {
-        setProductsList(prods);
-        setSupplierMix(buildSupplierMixData(prods));
+
+      const prodList = (prods && Array.isArray(prods)) ? prods : [];
+      const catList = (cats && Array.isArray(cats)) ? cats : [];
+      const supList = (sups && Array.isArray(sups)) ? sups : [];
+
+      const calculatedTotalStock = prodList.reduce((sum, p) => sum + Number(p.stock || 0), 0);
+      const calculatedLowStock = prodList.filter(p => Number(p.stock || 0) <= Number(p.threshold || 0) && Number(p.stock || 0) > 0).length;
+      const calculatedOutOfStock = prodList.filter(p => Number(p.stock || 0) === 0).length;
+      const calculatedValuation = prodList.reduce((sum, p) => sum + (Number(p.stock || 0) * Number(p.price || 0)), 0);
+
+      const mergedData = {
+        total_products: (rep && !rep.error && rep.total_products !== undefined && rep.total_products > 0) ? rep.total_products : prodList.length,
+        total_categories: (rep && !rep.error && rep.total_categories !== undefined && rep.total_categories > 0) ? rep.total_categories : catList.length,
+        total_suppliers: (rep && !rep.error && rep.total_suppliers !== undefined && rep.total_suppliers > 0) ? rep.total_suppliers : supList.length,
+        total_stock: (rep && !rep.error && rep.total_stock !== undefined && rep.total_stock > 0) ? rep.total_stock : calculatedTotalStock,
+        low_stock_count: (rep && !rep.error && rep.low_stock_count !== undefined) ? rep.low_stock_count : calculatedLowStock,
+        out_of_stock_count: (rep && !rep.error && rep.out_of_stock_count !== undefined) ? rep.out_of_stock_count : calculatedOutOfStock,
+        inventory_valuation: (rep && !rep.error && rep.inventory_valuation !== undefined && rep.inventory_valuation > 0) ? rep.inventory_valuation : calculatedValuation,
+      };
+
+      setReportData(mergedData);
+
+      if (prodList.length > 0) {
+        setProductsList(prodList);
+        setSupplierMix(buildSupplierMixData(prodList));
       }
       if (moves && Array.isArray(moves)) {
         setStockTrend(buildStockTrendData(moves));

@@ -3,7 +3,7 @@
 import { useState, useEffect, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import { ArrowDownToLine, Save, Package } from "lucide-react";
-import { PageHeader } from "@/components/app-shell";
+import { PageHeader, pushSystemNotification } from "@/components/app-shell";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -84,6 +84,15 @@ function StockInForm() {
     if (res && res.message) {
       toast.success("Stock In recorded successfully! ✅", {
         description: `New balance for ${selectedProduct?.name || 'product'}: ${res.new_stock} units. Form reset for next entry.`,
+      });
+
+      pushSystemNotification({
+        title: `Stock Received (+${quantity})`,
+        sub: `${selectedProduct?.name || 'Item'} · Ref: ${reference}`,
+        message: `${quantity} units of "${selectedProduct?.name || 'Item'}" were received into warehouse stock by ${activeUser?.name || 'Administrator'}. Reference: ${reference || 'PO'}.`,
+        type: "success",
+        category: "activity",
+        link: "/stock-history",
       });
 
       // AUTO-REFRESH & RESET FORM TO INITIAL CLEAN STATE

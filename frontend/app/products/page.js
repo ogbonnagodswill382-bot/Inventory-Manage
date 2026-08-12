@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { Plus, Search, Filter, Download, MoreHorizontal, Edit, Trash2, Package, ChevronLeft, ChevronRight, User } from "lucide-react";
-import { PageHeader, StatusBadge } from "@/components/app-shell";
+import { PageHeader, StatusBadge, pushSystemNotification } from "@/components/app-shell";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -127,6 +127,14 @@ export default function ProductsPage() {
       const res = await createProduct(payload);
       if (res && res.id) {
         toast.success(`Product "${name}" added to inventory!`);
+        pushSystemNotification({
+          title: `New Product Added: ${name}`,
+          sub: `SKU: ${finalSku} · ${stock} units`,
+          message: `Product "${name}" (SKU: ${finalSku}) was added to catalog with ${stock} initial units by ${activeUser?.name || 'Administrator'}.`,
+          type: "success",
+          category: "activity",
+          link: "/products",
+        });
         setOpen(false);
         await loadData();
       } else {
@@ -137,9 +145,18 @@ export default function ProductsPage() {
   };
 
   const handleDeleteProduct = async (id, pName) => {
+    const activeUser = getAuthUser();
     const res = await deleteProduct(id);
-    if (res) {
+    if (res && res.success) {
       toast.success(`Product "${pName}" deleted`);
+      pushSystemNotification({
+        title: `Product Deleted: ${pName}`,
+        sub: "Catalog Item Removed",
+        message: `Product "${pName}" was deleted from inventory catalog by ${activeUser?.name || 'Administrator'}.`,
+        type: "danger",
+        category: "activity",
+        link: "/products",
+      });
       await loadData();
     } else {
       toast.error("Failed to delete product");

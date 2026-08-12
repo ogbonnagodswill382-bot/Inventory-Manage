@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { ArrowUpFromLine, Save, Package, AlertTriangle, ArrowLeftRight } from "lucide-react";
-import { PageHeader } from "@/components/app-shell";
+import { PageHeader, pushSystemNotification } from "@/components/app-shell";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -90,6 +90,15 @@ export default function StockOutPage() {
         description: reason === "transfer" || reason === "return" || destination
           ? `Stock Out recorded & added to Transfers & Returns Log! Track returns at /transfers.`
           : `New balance for ${selectedProduct?.name || 'product'}: ${res.new_stock} units. Form reset for next entry.`,
+      });
+
+      pushSystemNotification({
+        title: `Stock Dispatched (-${numQty})`,
+        sub: `${selectedProduct?.name || 'Item'} · Ref: ${reference.trim() || 'SO'}`,
+        message: `${numQty} units of "${selectedProduct?.name || 'Item'}" were dispatched out of warehouse stock by ${activeUser?.name || 'Administrator'}. Reference: ${reference.trim() || 'SO'}.`,
+        type: "info",
+        category: "activity",
+        link: "/stock-history",
       });
 
       // AUTO-REFRESH & RESET FORM TO INITIAL CLEAN STATE
