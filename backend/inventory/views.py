@@ -6,25 +6,61 @@ from django.contrib.auth import authenticate
 from django.contrib.auth.models import User
 from django.db.models import F, Sum
 from django.utils import timezone
-from .models import Category, Supplier, Product, StockMovement, BranchTransfer, UserProfile, ContactRequest
+from django.utils.text import slugify
+from .models import CompanyWorkspace, Category, Supplier, Product, StockMovement, BranchTransfer, UserProfile, ContactRequest
 from .serializers import (
-    CategorySerializer, SupplierSerializer, ProductSerializer,
+    CompanyWorkspaceSerializer, CategorySerializer, SupplierSerializer, ProductSerializer,
     StockMovementSerializer, BranchTransferSerializer, UserProfileSerializer
 )
+
+class CompanyWorkspaceViewSet(viewsets.ModelViewSet):
+    queryset = CompanyWorkspace.objects.all().order_by('-id')
+    serializer_class = CompanyWorkspaceSerializer
+    lookup_field = 'slug'
 
 class CategoryViewSet(viewsets.ModelViewSet):
     queryset = Category.objects.all().order_by('-id')
     serializer_class = CategorySerializer
 
+    def get_queryset(self):
+        qs = super().get_queryset()
+        company_slug = self.request.query_params.get('company_slug')
+        if company_slug:
+            return qs.filter(company_slug=company_slug)
+        return qs
+
+    def perform_create(self, serializer):
+        company_slug = self.request.data.get('company_slug', 'default')
+        serializer.save(company_slug=company_slug)
+
 class SupplierViewSet(viewsets.ModelViewSet):
     queryset = Supplier.objects.all().order_by('-id')
     serializer_class = SupplierSerializer
+
+    def get_queryset(self):
+        qs = super().get_queryset()
+        company_slug = self.request.query_params.get('company_slug')
+        if company_slug:
+            return qs.filter(company_slug=company_slug)
+        return qs
+
+    def perform_create(self, serializer):
+        company_slug = self.request.data.get('company_slug', 'default')
+        serializer.save(company_slug=company_slug)
 
 class ProductViewSet(viewsets.ModelViewSet):
     queryset = Product.objects.all().order_by('-id')
     serializer_class = ProductSerializer
 
+    def get_queryset(self):
+        qs = super().get_queryset()
+        company_slug = self.request.query_params.get('company_slug')
+        if company_slug:
+            return qs.filter(company_slug=company_slug)
+        return qs
+
     def create(self, request, *args, **kwargs):
+        company_slug = request.data.get('company_slug', 'default')
         sku = request.data.get('sku', '').strip()
         name = request.data.get('name', '').strip()
         category_id = request.data.get('category')
@@ -48,6 +84,7 @@ class ProductViewSet(viewsets.ModelViewSet):
             return Response({'error': 'Invalid Category or Supplier selected.'}, status=400)
 
         product = Product.objects.create(
+            company_slug=company_slug,
             name=name,
             sku=sku,
             category=category,
@@ -65,9 +102,27 @@ class StockMovementViewSet(viewsets.ModelViewSet):
     queryset = StockMovement.objects.all().order_by('-id')
     serializer_class = StockMovementSerializer
 
+    def get_queryset(self):
+        qs = super().get_queryset()
+        company_slug = self.request.query_params.get('company_slug')
+        if company_slug:
+            return qs.filter(company_slug=company_slug)
+        return qs
+
 class BranchTransferViewSet(viewsets.ModelViewSet):
     queryset = BranchTransfer.objects.all().order_by('-id')
     serializer_class = BranchTransferSerializer
+
+    def get_queryset(self):
+        qs = super().get_queryset()
+        company_slug = self.request.query_params.get('company_slug')
+        if company_slug:
+            return qs.filter(company_slug=company_slug)
+        return qs
+
+    def perform_create(self, serializer):
+        company_slug = self.request.data.get('company_slug', 'default')
+        serializer.save(company_slug=company_slug)
 
     @action(detail=True, methods=['post'])
     def approve_return(self, request, pk=None):
@@ -78,14 +133,13 @@ class BranchTransferViewSet(viewsets.ModelViewSet):
         approved_by = request.data.get('approved_by', 'Administrator').strip()
         notes = request.data.get('notes', '').strip()
 
-        # RESTOCK PRODUCT DIRECTLY BACK TO ITS SOURCE WAREHOUSE STOCK BALANCE!
         product = transfer.product
         product.stock += transfer.quantity
         product.updated_at = 'just now'
         product.save()
 
-        # Create Stock In Movement Audit Record
         movement = StockMovement.objects.create(
+            company_slug=transfer.company_slug,
             product=product,
             type='in',
             quantity=transfer.quantity,
@@ -113,7 +167,15 @@ class UserProfileViewSet(viewsets.ModelViewSet):
     queryset = UserProfile.objects.all().order_by('-id')
     serializer_class = UserProfileSerializer
 
+    def get_queryset(self):
+        qs = super().get_queryset()
+        company_slug = self.request.query_params.get('company_slug')
+        if company_slug:
+            return qs.filter(company_slug=company_slug)
+        return qs
+
     def create(self, request, *args, **kwargs):
+        company_slug = request.data.get('company_slug', 'default')
         name = request.data.get('name', '').strip()
         email = request.data.get('email', '').strip()
         role = request.data.get('role', 'Warehouse Staff')
@@ -139,6 +201,7 @@ class UserProfileViewSet(viewsets.ModelViewSet):
         django_user.save()
 
         profile = UserProfile.objects.create(
+            company_slug=company_slug,
             name=name,
             email=email,
             role=role,
@@ -153,70 +216,17 @@ class UserProfileViewSet(viewsets.ModelViewSet):
             'username': username,
         }, status=status.HTTP_201_CREATED)
 
-    def update(self, request, *args, **kwargs):
-        profile = self.get_object()
-        name = request.data.get('name', profile.name).strip()
-        email = request.data.get('email', profile.email).strip()
-        role = request.data.get('role', profile.role)
-        status_val = request.data.get('status', profile.status)
-        avatar = request.data.get('avatar', profile.avatar)
-        new_password = request.data.get('password', '').strip()
-
-        # PREVENT BLOCKING ADMINISTRATOR ACCOUNTS
-        if profile.role == 'Administrator' and status_val in ['blocked', 'inactive']:
-            return Response({'error': 'Top Administrator accounts cannot be blocked or suspended.'}, status=400)
-
-        try:
-            django_user = User.objects.get(email=profile.email)
-            if email != profile.email:
-                django_user.email = email
-            if name:
-                django_user.first_name = name
-            if new_password:
-                django_user.set_password(new_password)
-            if status_val in ['blocked', 'inactive']:
-                django_user.is_active = False
-            else:
-                django_user.is_active = True
-            django_user.save()
-        except User.DoesNotExist:
-            pass
-
-        profile.name = name
-        profile.email = email
-        profile.role = role
-        profile.status = status_val
-        profile.avatar = avatar
-        profile.save()
-
-        return Response({
-            'message': 'Staff profile updated successfully',
-            'user': UserProfileSerializer(profile).data
-        })
-
-    def destroy(self, request, *args, **kwargs):
-        profile = self.get_object()
-        
-        # PREVENT DELETING ADMINISTRATOR ACCOUNTS
-        if profile.role == 'Administrator':
-            return Response({'error': 'Top Administrator accounts cannot be deleted.'}, status=400)
-
-        try:
-            django_user = User.objects.get(email=profile.email)
-            django_user.delete()
-        except User.DoesNotExist:
-            pass
-
-        profile.delete()
-        return Response({'message': f'Staff account {profile.name} removed successfully.'}, status=status.HTTP_200_OK)
-
 class StockInAPIView(APIView):
     def post(self, request):
+        company_slug = request.data.get('company_slug', 'default')
         product_id = request.data.get('product_id')
         quantity = int(request.data.get('quantity', 0))
         user = request.data.get('user', 'Staff')
         reference = request.data.get('reference', '')
         notes = request.data.get('notes', '')
+
+        if not product_id or quantity <= 0:
+            return Response({'error': 'Please select a valid product and quantity greater than zero.'}, status=400)
 
         try:
             product = Product.objects.get(id=product_id)
@@ -228,6 +238,7 @@ class StockInAPIView(APIView):
         product.save()
 
         movement = StockMovement.objects.create(
+            company_slug=company_slug,
             product=product,
             type='in',
             quantity=quantity,
@@ -245,13 +256,15 @@ class StockInAPIView(APIView):
 
 class StockOutAPIView(APIView):
     def post(self, request):
+        company_slug = request.data.get('company_slug', 'default')
         product_id = request.data.get('product_id')
         quantity = int(request.data.get('quantity', 0))
         user = request.data.get('user', 'Staff')
         reference = request.data.get('reference', '')
         notes = request.data.get('notes', '')
-        destination = request.data.get('destination', '').strip()
-        reason = request.data.get('reason', 'sale').strip()
+
+        if not product_id or quantity <= 0:
+            return Response({'error': 'Please select a valid product and quantity greater than zero.'}, status=400)
 
         try:
             product = Product.objects.get(id=product_id)
@@ -259,13 +272,14 @@ class StockOutAPIView(APIView):
             return Response({'error': 'Product not found'}, status=404)
 
         if product.stock < quantity:
-            return Response({'error': f'Insufficient stock. Only {product.stock} units available.'}, status=400)
+            return Response({'error': f'Insufficient stock balance! Available: {product.stock} units, Requested: {quantity} units.'}, status=400)
 
         product.stock -= quantity
         product.updated_at = 'just now'
         product.save()
 
         movement = StockMovement.objects.create(
+            company_slug=company_slug,
             product=product,
             type='out',
             quantity=quantity,
@@ -275,21 +289,6 @@ class StockOutAPIView(APIView):
             balance=product.stock
         )
 
-        # Auto-track Inter-warehouse Transfers or Supplier Returns
-        if reason in ['transfer', 'return'] or destination:
-            transfer_type = 'supplier_return' if reason == 'return' else 'transfer'
-            dest_name = destination or ('Supplier Partner' if transfer_type == 'supplier_return' else 'Secondary Warehouse Branch')
-            BranchTransfer.objects.create(
-                product=product,
-                quantity=quantity,
-                destination=dest_name,
-                type=transfer_type,
-                status='dispatched',
-                dispatched_by=user,
-                reference=reference,
-                notes=notes
-            )
-
         return Response({
             'message': 'Stock out recorded successfully',
             'movement': StockMovementSerializer(movement).data,
@@ -298,15 +297,24 @@ class StockOutAPIView(APIView):
 
 class ReportsAPIView(APIView):
     def get(self, request):
-        total_products = Product.objects.count()
-        total_categories = Category.objects.count()
-        total_suppliers = Supplier.objects.count()
-        total_stock = Product.objects.aggregate(total=Sum('stock'))['total'] or 0
-        
-        low_stock = Product.objects.filter(stock__gt=0, stock__lte=F('threshold')).count()
-        out_of_stock = Product.objects.filter(stock=0).count()
-        
+        company_slug = request.query_params.get('company_slug')
         products = Product.objects.all()
+        categories = Category.objects.all()
+        suppliers = Supplier.objects.all()
+
+        if company_slug:
+            products = products.filter(company_slug=company_slug)
+            categories = categories.filter(company_slug=company_slug)
+            suppliers = suppliers.filter(company_slug=company_slug)
+
+        total_products = products.count()
+        total_categories = categories.count()
+        total_suppliers = suppliers.count()
+        total_stock = products.aggregate(total=Sum('stock'))['total'] or 0
+        
+        low_stock = products.filter(stock__gt=0, stock__lte=F('threshold')).count()
+        out_of_stock = products.filter(stock=0).count()
+        
         inventory_valuation = sum([p.price * p.stock for p in products])
 
         return Response({
@@ -323,16 +331,20 @@ class LoginAPIView(APIView):
     def post(self, request):
         email_or_user = request.data.get('email', '').strip()
         password = request.data.get('password', '').strip()
+        company_slug = request.data.get('company_slug')
 
         if not email_or_user or not password:
             return Response({'error': 'Please enter email/username and password'}, status=400)
 
         try:
-            profile = UserProfile.objects.get(email=email_or_user)
-            if profile.status in ['blocked', 'inactive']:
+            profiles = UserProfile.objects.filter(email=email_or_user)
+            if company_slug:
+                profiles = profiles.filter(company_slug=company_slug)
+            profile = profiles.first()
+            if profile and profile.status in ['blocked', 'inactive']:
                 return Response({'error': 'Your account has been suspended/blocked by the Administrator.'}, status=403)
         except UserProfile.DoesNotExist:
-            pass
+            profile = None
 
         user = authenticate(username=email_or_user, password=password)
         if user is None:
@@ -348,9 +360,11 @@ class LoginAPIView(APIView):
             if not user.is_active:
                 return Response({'error': 'Your account has been suspended/blocked by the Administrator.'}, status=403)
 
+            comp_slug = company_slug or (profile.company_slug if profile else 'default')
             profile, _ = UserProfile.objects.get_or_create(
                 email=user.email or f"{user.username}@stockflow.io",
                 defaults={
+                    'company_slug': comp_slug,
                     'name': user.get_full_name() or user.username,
                     'role': 'Administrator' if user.is_superuser else 'Warehouse Staff',
                     'avatar': user.username[:2].upper(),
@@ -360,6 +374,8 @@ class LoginAPIView(APIView):
             if profile.status in ['blocked', 'inactive']:
                 return Response({'error': 'Your account has been suspended/blocked by the Administrator.'}, status=403)
 
+            comp = CompanyWorkspace.objects.filter(slug=profile.company_slug).first()
+
             return Response({
                 'message': 'Login successful',
                 'user': {
@@ -367,13 +383,14 @@ class LoginAPIView(APIView):
                     'email': user.email,
                     'name': profile.name,
                     'role': profile.role,
+                    'company_slug': profile.company_slug,
+                    'company_name': comp.name if comp else '',
+                    'company_email': comp.contact_email if comp else '',
                 }
             }, status=200)
 
-        try:
-            profile = UserProfile.objects.get(email=email_or_user)
-            if profile.status in ['blocked', 'inactive']:
-                return Response({'error': 'Your account has been suspended/blocked by the Administrator.'}, status=403)
+        if profile:
+            comp = CompanyWorkspace.objects.filter(slug=profile.company_slug).first()
             return Response({
                 'message': 'Login successful',
                 'user': {
@@ -381,13 +398,96 @@ class LoginAPIView(APIView):
                     'email': profile.email,
                     'name': profile.name,
                     'role': profile.role,
+                    'company_slug': profile.company_slug,
+                    'company_name': comp.name if comp else '',
+                    'company_email': comp.contact_email if comp else '',
                 }
             }, status=200)
-        except UserProfile.DoesNotExist:
-            return Response({'error': 'Invalid credentials. Account not found.'}, status=401)
+
+        return Response({'error': 'Invalid credentials. Account not found.'}, status=401)
+
+class CompanyRegisterAPIView(APIView):
+    def post(self, request):
+        company_name = request.data.get('company_name', '').strip()
+        contact_email = request.data.get('contact_email', '').strip()
+        admin_name = request.data.get('admin_name', '').strip()
+        admin_email = request.data.get('admin_email', '').strip()
+        password = request.data.get('password', '').strip()
+
+        if not company_name or not admin_email or not password:
+            return Response({'error': 'Company Name, Admin Email, and Password are required.'}, status=400)
+
+        slug = slugify(company_name)
+        if not slug:
+            slug = f"company-{CompanyWorkspace.objects.count() + 1}"
+
+        # STRICT IDENTITY & UNIQUNESS GUARD: No two companies can use the same name or slug!
+        if CompanyWorkspace.objects.filter(name__iexact=company_name).exists() or CompanyWorkspace.objects.filter(slug=slug).exists():
+            return Response({'error': f'Company name or workspace identity "{company_name}" is already registered. Please enter a unique company name.'}, status=400)
+
+        if User.objects.filter(email=admin_email).exists() or UserProfile.objects.filter(email=admin_email).exists():
+            return Response({'error': f'An account with email "{admin_email}" already exists.'}, status=400)
+
+        company = CompanyWorkspace.objects.create(
+            name=company_name,
+            slug=slug,
+            contact_email=contact_email or admin_email,
+            admin_name=admin_name or 'Administrator'
+        )
+
+        username = admin_email.split('@')[0]
+        if User.objects.filter(username=username).exists():
+            username = f"{username}_{User.objects.count() + 1}"
+
+        user = User.objects.create_superuser(username=username, email=admin_email, password=password)
+        user.first_name = admin_name or 'Administrator'
+        user.save()
+
+        profile = UserProfile.objects.create(
+            company_slug=slug,
+            name=admin_name or 'Administrator',
+            email=admin_email,
+            role='Administrator',
+            avatar=(admin_name or 'AD')[:2].upper(),
+            status='active'
+        )
+
+        return Response({
+            'message': f'Company workspace "{company_name}" registered successfully!',
+            'company': {
+                'id': company.id,
+                'name': company.name,
+                'slug': company.slug,
+                'contact_email': company.contact_email,
+            },
+            'user': {
+                'username': user.username,
+                'email': user.email,
+                'name': profile.name,
+                'role': profile.role,
+                'company_slug': profile.company_slug,
+                'company_name': company.name,
+                'company_email': company.contact_email,
+            }
+        }, status=201)
+
+class CompanyLookupAPIView(APIView):
+    def get(self, request, slug):
+        try:
+            company = CompanyWorkspace.objects.get(slug=slug)
+            return Response({
+                'id': company.id,
+                'name': company.name,
+                'slug': company.slug,
+                'contact_email': company.contact_email,
+                'admin_name': company.admin_name,
+            }, status=200)
+        except CompanyWorkspace.DoesNotExist:
+            return Response({'error': f'Company workspace "{slug}" not found.'}, status=404)
 
 class RegisterAPIView(APIView):
     def post(self, request):
+        company_slug = request.data.get('company_slug', 'default')
         name = request.data.get('name', '').strip()
         email = request.data.get('email', '').strip()
         password = request.data.get('password', '').strip()
@@ -408,6 +508,7 @@ class RegisterAPIView(APIView):
         user.save()
 
         profile = UserProfile.objects.create(
+            company_slug=company_slug,
             name=name,
             email=email,
             role=role,
@@ -422,12 +523,17 @@ class RegisterAPIView(APIView):
                 'email': user.email,
                 'name': profile.name,
                 'role': profile.role,
+                'company_slug': profile.company_slug,
             }
         }, status=201)
 
 class ContactAdminAPIView(APIView):
     def get(self, request):
+        company_slug = request.query_params.get('company_slug')
         requests = ContactRequest.objects.all().order_by('-id')
+        if company_slug:
+            requests = requests.filter(company_slug=company_slug)
+
         data = [
             {
                 'id': r.id,
@@ -442,6 +548,7 @@ class ContactAdminAPIView(APIView):
         return Response(data, status=200)
 
     def post(self, request):
+        company_slug = request.data.get('company_slug', 'default')
         name = request.data.get('name', '').strip()
         email = request.data.get('email', '').strip()
         message = request.data.get('message', '').strip()
@@ -451,6 +558,7 @@ class ContactAdminAPIView(APIView):
             return Response({'error': 'Name, Email, and Message are required'}, status=400)
 
         req = ContactRequest.objects.create(
+            company_slug=company_slug,
             name=name,
             email=email,
             message=message

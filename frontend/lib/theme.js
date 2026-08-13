@@ -70,8 +70,22 @@ export function getAppSettings() {
   if (typeof window === "undefined") return DEFAULT_SETTINGS;
   try {
     const data = localStorage.getItem(SETTINGS_STORAGE_KEY);
-    if (!data) return DEFAULT_SETTINGS;
-    return { ...DEFAULT_SETTINGS, ...JSON.parse(data) };
+    const parsed = data ? JSON.parse(data) : {};
+    let authUser = null;
+    try {
+      const authData = localStorage.getItem("stockflow_auth_user");
+      if (authData) authUser = JSON.parse(authData);
+    } catch (e) {}
+
+    const companyName = authUser?.company_name || parsed.companyName || DEFAULT_SETTINGS.companyName;
+    const contactEmail = authUser?.company_email || parsed.contactEmail || DEFAULT_SETTINGS.contactEmail;
+
+    return {
+      ...DEFAULT_SETTINGS,
+      ...parsed,
+      companyName,
+      contactEmail,
+    };
   } catch (e) {
     return DEFAULT_SETTINGS;
   }

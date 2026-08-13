@@ -1,13 +1,41 @@
+import { getCompanySlug } from "./auth";
+
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000/api";
 
 export async function fetchFromAPI(endpoint, options = {}) {
   try {
-    const res = await fetch(`${API_BASE_URL}${endpoint}`, {
+    const slug = getCompanySlug();
+    let url = `${API_BASE_URL}${endpoint}`;
+
+    // Attach company_slug query parameter to GET requests if not present
+    if (slug && slug !== 'default' && (!options.method || options.method.toUpperCase() === 'GET')) {
+      const joinChar = url.includes('?') ? '&' : '?';
+      if (!url.includes('company_slug=')) {
+        url = `${url}${joinChar}company_slug=${encodeURIComponent(slug)}`;
+      }
+    }
+
+    // Attach company_slug to POST / PUT request JSON payloads if body exists
+    let body = options.body;
+    if (slug && slug !== 'default' && body && typeof body === 'string') {
+      try {
+        const parsed = JSON.parse(body);
+        if (!parsed.company_slug) {
+          parsed.company_slug = slug;
+          body = JSON.stringify(parsed);
+        }
+      } catch (e) {
+        // ignore non-json body
+      }
+    }
+
+    const res = await fetch(url, {
       headers: {
         "Content-Type": "application/json",
         ...options.headers,
       },
       ...options,
+      body: body,
     });
     if (!res.ok) {
       const errData = await res.json().catch(() => ({}));
@@ -24,6 +52,18 @@ export async function fetchFromAPI(endpoint, options = {}) {
       : error.message;
     return { error: msg };
   }
+}
+
+// Company Workspace Endpoints
+export async function registerCompanyWorkspace(payload) {
+  return await fetchFromAPI('/company/register/', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function getCompanyWorkspace(slug) {
+  return await fetchFromAPI(`/company/lookup/${slug}/`);
 }
 
 // Authentication Endpoints
@@ -197,7 +237,7 @@ export async function approveTransferReturn(id, payload = {}) {
 
 // Dashboard Reports & Summary Endpoint
 export async function getDashboardSummary() {
-  return await fetchFromAPI('/reports/summary/');
+  return await fetchFromAPI('/reports/');
 }
 
 export const getReports = getDashboardSummary;

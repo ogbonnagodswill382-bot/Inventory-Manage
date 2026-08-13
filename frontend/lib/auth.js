@@ -63,10 +63,30 @@ export function getAuthUser() {
       role: parsed.role || "Warehouse Staff",
       avatar: (parsed.name ? parsed.name.slice(0, 2).toUpperCase() : (parsed.username ? parsed.username.slice(0, 2).toUpperCase() : "US")),
       username: parsed.username || parsed.name || "user",
+      company_slug: parsed.company_slug || "default",
+      company_name: parsed.company_name || "",
+      company_email: parsed.company_email || "",
     };
   } catch (e) {
     return null;
   }
+}
+
+/**
+ * Get current company_slug for active session.
+ */
+export function getCompanySlug() {
+  const user = getAuthUser();
+  return user?.company_slug || "default";
+}
+
+/**
+ * Generate full company staff login URL link.
+ */
+export function getCompanyStaffLink(slug) {
+  if (typeof window === "undefined") return `/login?company=${slug || "default"}`;
+  const origin = window.location.origin;
+  return `${origin}/login?company=${slug || "default"}`;
 }
 
 /**
@@ -81,6 +101,9 @@ export function setAuthUser(user) {
       role: user.role || "Warehouse Staff",
       username: user.username || user.name || "user",
       avatar: (user.name ? user.name.slice(0, 2).toUpperCase() : (user.username ? user.username.slice(0, 2).toUpperCase() : "US")),
+      company_slug: user.company_slug || "default",
+      company_name: user.company_name || "",
+      company_email: user.company_email || user.contact_email || "",
     };
     localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(formatted));
   } catch (e) {
@@ -94,8 +117,14 @@ export function setAuthUser(user) {
 export function logoutUser() {
   if (typeof window === "undefined") return;
   try {
+    const user = getAuthUser();
+    const slug = user?.company_slug;
     localStorage.removeItem(AUTH_STORAGE_KEY);
-    window.location.href = "/login";
+    if (slug && slug !== "default") {
+      window.location.href = `/login?company=${slug}`;
+    } else {
+      window.location.href = "/login";
+    }
   } catch (e) {
     window.location.href = "/login";
   }

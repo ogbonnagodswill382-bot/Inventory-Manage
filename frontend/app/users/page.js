@@ -2,7 +2,7 @@
 
 import { useState, useEffect, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
-import { Plus, MoreHorizontal, Edit, Trash2, Users, Copy, Check, ShieldCheck, Ban, CheckCircle, Crown, Shield } from "lucide-react";
+import { Plus, MoreHorizontal, Edit, Trash2, Users, Copy, Check, ShieldCheck, Ban, CheckCircle, Crown, Shield, Building2 } from "lucide-react";
 import { PageHeader, StatusBadge } from "@/components/app-shell";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -14,7 +14,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { createUser, getUsers, updateUser, deleteUser } from "@/lib/api";
-import { getAuthUser } from "@/lib/auth";
+import { getAuthUser, getCompanyStaffLink } from "@/lib/auth";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 
@@ -49,6 +49,10 @@ function UsersContent() {
   const [credModalOpen, setCredModalOpen] = useState(false);
   const [createdCreds, setCreatedCreds] = useState(null);
   const [copied, setCopied] = useState(false);
+  const [copiedStaffLink, setCopiedStaffLink] = useState(false);
+
+  const companySlug = currentUser?.company_slug || "default";
+  const staffLink = getCompanyStaffLink(companySlug);
 
   async function loadData() {
     const data = await getUsers();
@@ -73,13 +77,22 @@ function UsersContent() {
     }
   }, [preName, preEmail]);
 
+  const handleCopyStaffLink = () => {
+    navigator.clipboard.writeText(staffLink);
+    setCopiedStaffLink(true);
+    toast.success("Dedicated Staff Sign-In Link copied to clipboard! 🔗", {
+      description: `Share this link with your staff: ${staffLink}`,
+    });
+    setTimeout(() => setCopiedStaffLink(false), 3000);
+  };
+
   const handleOpenAddModal = () => {
     setEditUser(null);
     setName("");
     setEmail("");
     setRole("Warehouse Staff");
     setStatusVal("active");
-    setPassword("staff@12345");
+    setPassword("");
     setAvatar("SK");
     setOpen(true);
   };
@@ -88,22 +101,17 @@ function UsersContent() {
     setEditUser(u);
     setName(u.name);
     setEmail(u.email);
-    setRole(u.role || "Warehouse Staff");
-    setStatusVal(u.status || "active");
+    setRole(u.role);
+    setStatusVal(u.status);
     setPassword("");
-    setAvatar(u.avatar || "SK");
+    setAvatar(u.avatar || u.name.slice(0, 2).toUpperCase());
     setOpen(true);
   };
 
   const handleSaveUser = async (e) => {
     e.preventDefault();
     if (!name.trim() || !email.trim()) {
-      toast.error("Please enter user name and email");
-      return;
-    }
-
-    if (editUser && editUser.role === "Administrator" && statusVal === "blocked") {
-      toast.error("Top Administrator account cannot be blocked or suspended!");
+      toast.error("Please enter Name and Email");
       return;
     }
 
@@ -181,7 +189,7 @@ function UsersContent() {
       );
       await loadData();
     } else {
-      toast.error(res?.error || "Failed to update account status");
+      toast.error("Failed to update user status");
     }
   };
 
@@ -195,236 +203,286 @@ function UsersContent() {
 
     const res = await deleteUser(u.id);
     if (res && !res.error) {
-      toast.success(`Removed staff user "${u.name}"`);
+      toast.success(`Removed account for ${u.name}`);
       await loadData();
     } else {
-      toast.error(res?.error || "Failed to delete staff user");
+      toast.error(res?.error || "Failed to delete user");
     }
   };
 
   const handleCopyCredentials = () => {
     if (!createdCreds) return;
-    const text = `StockFlow Login Credentials:\nRole: ${createdCreds.role}\nName: ${createdCreds.name}\nEmail / Username: ${createdCreds.email}\nInitial Password: ${createdCreds.password}\nLogin URL: http://localhost:3000/login`;
+    const text = `StockFlow Staff Credentials:\nCompany Staff Link: ${staffLink}\nName: ${createdCreds.name}\nEmail/Username: ${createdCreds.email}\nPassword: ${createdCreds.password}\nRole: ${createdCreds.role}`;
     navigator.clipboard.writeText(text);
     setCopied(true);
-    toast.success("Login credentials copied to clipboard!");
-    setTimeout(() => setCopied(false), 2000);
+    toast.success("Credentials & Staff Link copied to clipboard!");
+    setTimeout(() => setCopied(false), 2500);
   };
 
   return (
-    <div>
+    <div className="space-y-6">
       <PageHeader
-        title="Users & Access Management"
-        description="As Administrator, manage staff profiles, reset passwords, and control access permissions."
+        title="Staff & User Management"
+        description="Manage team member roles, permissions, access status, and share dedicated company sign-in links."
         actions={
           <Button onClick={handleOpenAddModal}>
-            <Plus className="mr-2 h-4 w-4" /> Create Staff Account
+            <Plus className="mr-2 h-4 w-4" /> Add Team Member
           </Button>
         }
       />
 
-      {/* CREATE / EDIT USER MODAL */}
+      {/* DEDICATED COMPANY STAFF LINK BANNER */}
+      <Card className="border-primary/30 bg-gradient-to-r from-primary/5 via-card to-background">
+        <CardContent className="p-4 sm:p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+          <div className="space-y-1">
+            <div className="font-bold text-sm text-foreground flex items-center gap-2">
+              <Building2 className="h-4 w-4 text-primary" /> Dedicated Company Staff Link
+            </div>
+            <div className="text-xs text-muted-foreground">
+              Share this dedicated link with staff. Opening this link displays a clean Sign In form for your company workspace.
+            </div>
+            <div className="font-mono text-xs text-primary font-bold select-all bg-background px-2.5 py-1 rounded border inline-block mt-1">
+              {staffLink}
+            </div>
+          </div>
+          <Button size="sm" className="text-xs font-semibold shrink-0" onClick={handleCopyStaffLink}>
+            {copiedStaffLink ? <Check className="mr-1.5 h-3.5 w-3.5 text-white" /> : <Copy className="mr-1.5 h-3.5 w-3.5" />}
+            {copiedStaffLink ? "Copied Staff Link!" : "Copy Staff Sign-In Link"}
+          </Button>
+        </CardContent>
+      </Card>
+
+      {/* ADD / EDIT USER DIALOG MODAL */}
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="max-w-md">
           <form onSubmit={handleSaveUser}>
             <DialogHeader>
-              <DialogTitle>{editUser ? `Manage Account: ${editUser.name}` : "Create Staff Account"}</DialogTitle>
+              <DialogTitle>{editUser ? `Edit ${editUser.name}` : "Create New Team Member"}</DialogTitle>
               <DialogDescription>
                 {editUser
-                  ? "Update staff details, reset password, or suspend access."
-                  : "Create an account for your employee and issue initial login credentials."}
+                  ? "Update staff role, permissions, status, or reset login password."
+                  : "Add a staff member to your company workspace."}
               </DialogDescription>
             </DialogHeader>
-            <div className="space-y-3 py-3 text-sm">
-              <div className="space-y-1">
-                <Label htmlFor="u-name">Employee Full Name</Label>
-                <Input id="u-name" placeholder="e.g. Alex Johnson" value={name} onChange={(e) => setName(e.target.value)} required />
-              </div>
-              <div className="space-y-1">
-                <Label htmlFor="u-email">Email Address (Login Username)</Label>
-                <Input id="u-email" type="email" placeholder="alex@company.com" value={email} onChange={(e) => setEmail(e.target.value)} required />
-              </div>
 
+            <div className="space-y-3 py-3 text-xs sm:text-sm">
               <div className="space-y-1">
-                <Label htmlFor="u-pass">{editUser ? "Reset Password (Optional)" : "Initial Password"}</Label>
+                <Label htmlFor="u-name">Full Name</Label>
                 <Input
-                  id="u-pass"
-                  type="password"
-                  placeholder={editUser ? "Type new password to reset..." : "staff@12345"}
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  required={!editUser}
+                  id="u-name"
+                  placeholder="e.g. Alex Johnson"
+                  value={name}
+                  onChange={(e) => {
+                    setName(e.target.value);
+                    if (!editUser && e.target.value.trim()) {
+                      setAvatar(e.target.value.trim().slice(0, 2).toUpperCase());
+                    }
+                  }}
+                  required
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-2">
+              <div className="space-y-1">
+                <Label htmlFor="u-email">Work Email / Login Identifier</Label>
+                <Input
+                  id="u-email"
+                  type="email"
+                  placeholder="alex@company.com"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  required
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1">
                   <Label>Assigned Role</Label>
                   <Select value={role} onValueChange={setRole}>
-                    <SelectTrigger><SelectValue placeholder="Select role" /></SelectTrigger>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="Warehouse Staff">Warehouse Staff</SelectItem>
-                      <SelectItem value="Inventory Manager">Inventory Manager</SelectItem>
                       <SelectItem value="Administrator">Administrator</SelectItem>
-                      <SelectItem value="Viewer">Viewer</SelectItem>
+                      <SelectItem value="Inventory Manager">Inventory Manager</SelectItem>
+                      <SelectItem value="Warehouse Staff">Warehouse Staff</SelectItem>
+                      <SelectItem value="Viewer">Viewer (Read-Only)</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
 
                 <div className="space-y-1">
-                  <Label>Access Status</Label>
-                  <Select value={statusVal} onValueChange={setStatusVal} disabled={editUser?.role === "Administrator"}>
-                    <SelectTrigger><SelectValue placeholder="Select status" /></SelectTrigger>
+                  <Label>Account Status</Label>
+                  <Select
+                    value={statusVal}
+                    onValueChange={setStatusVal}
+                    disabled={editUser?.role === "Administrator"}
+                  >
+                    <SelectTrigger><SelectValue /></SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="active">Active (Access Allowed)</SelectItem>
-                      <SelectItem value="blocked" disabled={editUser?.role === "Administrator"}>
-                        Blocked / Suspended {editUser?.role === "Administrator" ? "(Protected)" : ""}
-                      </SelectItem>
+                      <SelectItem value="active">Active</SelectItem>
+                      <SelectItem value="blocked">Blocked / Suspended</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
               </div>
 
               <div className="space-y-1">
-                <Label htmlFor="u-avatar">Initials Avatar</Label>
-                <Input id="u-avatar" maxLength={3} placeholder="SK" value={avatar} onChange={(e) => setAvatar(e.target.value)} />
+                <Label htmlFor="u-pass">
+                  {editUser ? "Reset Password (Leave blank to keep unchanged)" : "Initial Password"}
+                </Label>
+                <Input
+                  id="u-pass"
+                  type="password"
+                  placeholder={editUser ? "New password..." : "e.g. staff@12345"}
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                />
               </div>
             </div>
 
             <DialogFooter>
               <Button type="button" variant="outline" onClick={() => setOpen(false)}>Cancel</Button>
               <Button type="submit" disabled={submitting}>
-                {submitting ? "Saving..." : editUser ? "Update Staff Account" : "Create Account"}
+                {submitting ? "Saving..." : editUser ? "Save Changes" : "Create Account"}
               </Button>
             </DialogFooter>
           </form>
         </DialogContent>
       </Dialog>
 
-      {/* CREDENTIAL NOTICE DIALOG */}
+      {/* CREDENTIAL NOTICE POPUP MODAL */}
       <Dialog open={credModalOpen} onOpenChange={setCredModalOpen}>
-        <DialogContent className="max-w-md">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2 text-emerald-600">
-              <ShieldCheck className="h-5 w-5" /> Account Created & Ready to Issue
-            </DialogTitle>
-            <DialogDescription>
-              Copy these login details and send them directly to your staff member.
-            </DialogDescription>
-          </DialogHeader>
+        {createdCreds && (
+          <DialogContent className="max-w-md">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2 text-emerald-600">
+                <CheckCircle className="h-5 w-5 text-emerald-600" /> Account Created Successfully!
+              </DialogTitle>
+              <DialogDescription className="text-xs text-muted-foreground mt-1">
+                Share these login credentials and staff link with the team member.
+              </DialogDescription>
+            </DialogHeader>
 
-          {createdCreds && (
-            <div className="rounded-lg border bg-muted/40 p-4 space-y-2 text-sm">
-              <div className="flex justify-between py-1 border-b">
-                <span className="text-muted-foreground">Employee Name:</span>
-                <span className="font-semibold">{createdCreds.name}</span>
-              </div>
-              <div className="flex justify-between py-1 border-b">
-                <span className="text-muted-foreground">Login Email:</span>
-                <span className="font-mono font-medium">{createdCreds.email}</span>
-              </div>
-              <div className="flex justify-between py-1 border-b">
-                <span className="text-muted-foreground">Initial Password:</span>
-                <span className="font-mono font-bold text-primary">{createdCreds.password}</span>
-              </div>
-              <div className="flex justify-between py-1">
-                <span className="text-muted-foreground">Assigned Role:</span>
-                <span className="font-medium">{createdCreds.role}</span>
+            <div className="space-y-3 py-2 text-xs">
+              <div className="rounded-xl border bg-muted/40 p-3 space-y-2">
+                <div className="flex justify-between border-b pb-1">
+                  <span className="text-muted-foreground">Company Staff Link:</span>
+                  <strong className="font-mono text-primary font-bold truncate max-w-[200px]">{staffLink}</strong>
+                </div>
+                <div className="flex justify-between border-b pb-1">
+                  <span className="text-muted-foreground">Full Name:</span>
+                  <strong className="text-foreground">{createdCreds.name}</strong>
+                </div>
+                <div className="flex justify-between border-b pb-1">
+                  <span className="text-muted-foreground">Email / Username:</span>
+                  <strong className="font-mono text-foreground">{createdCreds.email}</strong>
+                </div>
+                <div className="flex justify-between border-b pb-1">
+                  <span className="text-muted-foreground">Initial Password:</span>
+                  <strong className="font-mono text-emerald-600">{createdCreds.password}</strong>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Role:</span>
+                  <strong className="text-primary">{createdCreds.role}</strong>
+                </div>
               </div>
             </div>
-          )}
 
-          <DialogFooter className="flex gap-2 sm:justify-between">
-            <Button variant="outline" onClick={() => setCredModalOpen(false)}>
-              Done
-            </Button>
-            <Button onClick={handleCopyCredentials} className="gap-2">
-              {copied ? <Check className="h-4 w-4 text-emerald-400" /> : <Copy className="h-4 w-4" />}
-              {copied ? "Copied to Clipboard!" : "Copy Login Details"}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
+            <DialogFooter className="flex gap-2 sm:justify-between">
+              <Button variant="outline" className="w-full text-xs" onClick={handleCopyCredentials}>
+                {copied ? <Check className="mr-1.5 h-3.5 w-3.5 text-emerald-600" /> : <Copy className="mr-1.5 h-3.5 w-3.5" />}
+                {copied ? "Copied Credentials!" : "Copy Link & Credentials"}
+              </Button>
+              <Button className="w-full text-xs" onClick={() => setCredModalOpen(false)}>
+                Done
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        )}
       </Dialog>
 
       {/* USER LIST TABLE */}
       <Card>
-        <CardContent className="p-4 md:p-6">
-          <div className="rounded-lg border overflow-x-auto">
+        <CardContent className="p-0">
+          <div className="overflow-x-auto w-full">
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>User</TableHead>
-                  <TableHead>Role</TableHead>
+                  <TableHead>User / Email</TableHead>
+                  <TableHead>Assigned Role</TableHead>
                   <TableHead>Status</TableHead>
-                  <TableHead>Last login</TableHead>
-                  <TableHead className="w-10" />
+                  <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {userList.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={5} className="text-center py-10 text-muted-foreground">
-                      <Users className="h-8 w-8 mx-auto mb-2 text-muted-foreground/40" />
-                      No team members created yet. Click "+ Create Staff Account" to issue logins.
+                    <TableCell colSpan={4} className="text-center py-10 text-muted-foreground text-xs">
+                      No team members found in database.
                     </TableCell>
                   </TableRow>
                 ) : (
                   userList.map((u) => {
                     const isBlocked = u.status === "blocked" || u.status === "inactive";
-                    const isTopAdmin = u.role === "Administrator";
+                    const isAdminUser = u.role === "Administrator";
+
                     return (
-                      <TableRow key={u.id} className={cn(isBlocked && "bg-destructive/5 opacity-80")}>
+                      <TableRow key={u.id}>
                         <TableCell>
                           <div className="flex items-center gap-3">
-                            <Avatar className="h-9 w-9">
-                              <AvatarFallback className="bg-primary/10 text-primary text-xs font-semibold">{u.avatar || "SK"}</AvatarFallback>
+                            <Avatar className="h-9 w-9 border">
+                              <AvatarFallback className="bg-primary/10 text-primary text-xs font-bold">
+                                {u.avatar || u.name.slice(0, 2).toUpperCase()}
+                              </AvatarFallback>
                             </Avatar>
                             <div>
-                              <div className="font-medium flex items-center gap-2">
+                              <div className="font-semibold text-sm flex items-center gap-1.5">
                                 {u.name}
-                                {isTopAdmin && (
-                                  <span className="inline-flex items-center gap-1 text-[10px] font-bold text-primary bg-primary/10 px-2 py-0.5 rounded-full border border-primary/20">
-                                    <Crown className="h-3 w-3 text-primary" /> Top Admin
-                                  </span>
-                                )}
-                                {isBlocked && <span className="text-[10px] font-bold text-destructive bg-destructive/10 px-1.5 py-0.2 rounded-md">BLOCKED</span>}
+                                {isAdminUser && <Crown className="h-3.5 w-3.5 text-amber-500 shrink-0" />}
                               </div>
-                              <div className="text-xs text-muted-foreground">{u.email}</div>
+                              <div className="text-xs text-muted-foreground font-mono">{u.email}</div>
                             </div>
                           </div>
                         </TableCell>
+
                         <TableCell>
-                          <span className={cn("inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium border", roleColor[u.role] || "bg-muted text-muted-foreground")}>{u.role}</span>
+                          <span className={cn("inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium border", roleColor[u.role] || "bg-muted text-muted-foreground")}>
+                            {u.role}
+                          </span>
                         </TableCell>
+
                         <TableCell>
-                          {isTopAdmin ? (
-                            <span className="inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-xs font-semibold bg-primary/10 text-primary border-primary/20">
-                              <Shield className="h-3 w-3 text-primary" /> Active (Protected)
-                            </span>
-                          ) : (
-                            <StatusBadge status={u.status} />
-                          )}
+                          <StatusBadge status={u.status} />
                         </TableCell>
-                        <TableCell className="text-muted-foreground text-sm">{u.lastLogin || "just now"}</TableCell>
-                        <TableCell>
+
+                        <TableCell className="text-right">
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild>
                               <Button variant="ghost" size="icon" className="h-8 w-8"><MoreHorizontal className="h-4 w-4" /></Button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end">
                               <DropdownMenuItem onClick={() => handleOpenEditModal(u)}>
-                                <Edit className="mr-2 h-4 w-4" /> Edit & Reset Password
+                                <Edit className="mr-2 h-4 w-4" /> Edit / Reset Pass
                               </DropdownMenuItem>
-                              
-                              {!isTopAdmin && (
+
+                              {!isAdminUser && (
                                 <>
-                                  <DropdownMenuItem onClick={() => handleToggleBlockUser(u)} className={cn(isBlocked ? "text-emerald-600" : "text-amber-600")}>
-                                    {isBlocked ? <CheckCircle className="mr-2 h-4 w-4" /> : <Ban className="mr-2 h-4 w-4" />}
-                                    {isBlocked ? "Unblock Access" : "Block Access"}
-                                  </DropdownMenuItem>
                                   <DropdownMenuSeparator />
-                                  <DropdownMenuItem className="text-destructive" onClick={() => handleDeleteUser(u)}>
-                                    <Trash2 className="mr-2 h-4 w-4" /> Delete Account
+                                  <DropdownMenuItem
+                                    onClick={() => handleToggleBlockUser(u)}
+                                    className={isBlocked ? "text-emerald-600" : "text-amber-600"}
+                                  >
+                                    {isBlocked ? (
+                                      <>
+                                        <CheckCircle className="mr-2 h-4 w-4" /> Re-Activate Account
+                                      </>
+                                    ) : (
+                                      <>
+                                        <Ban className="mr-2 h-4 w-4" /> Suspend / Block Access
+                                      </>
+                                    )}
+                                  </DropdownMenuItem>
+
+                                  <DropdownMenuItem onClick={() => handleDeleteUser(u)} className="text-destructive">
+                                    <Trash2 className="mr-2 h-4 w-4" /> Remove User Account
                                   </DropdownMenuItem>
                                 </>
                               )}
@@ -446,7 +504,7 @@ function UsersContent() {
 
 export default function UsersPage() {
   return (
-    <Suspense fallback={<div className="p-6 text-center text-sm text-muted-foreground">Loading users manager...</div>}>
+    <Suspense fallback={<div className="p-8 text-xs text-muted-foreground">Loading users manager...</div>}>
       <UsersContent />
     </Suspense>
   );

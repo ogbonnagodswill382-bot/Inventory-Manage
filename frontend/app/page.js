@@ -218,7 +218,7 @@ export default function Dashboard() {
   return (
     <div className="space-y-4 sm:space-y-6">
       <PageHeader
-        title={companyName ? `${companyName} — Inventory Overview` : "Inventory Overview"}
+        title={companyName ? `${companyName} — Inventory Overview` : "StockFlow — Inventory Overview"}
         description={
           companyName
             ? `Real-time stock levels, movement trends, and alert monitoring for ${companyName}.`

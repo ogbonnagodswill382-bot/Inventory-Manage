@@ -1,5 +1,10 @@
 from rest_framework import serializers
-from .models import Category, Supplier, Product, StockMovement, BranchTransfer, UserProfile
+from .models import CompanyWorkspace, Category, Supplier, Product, StockMovement, BranchTransfer, UserProfile
+
+class CompanyWorkspaceSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = CompanyWorkspace
+        fields = ['id', 'name', 'slug', 'contact_email', 'admin_name', 'created_at']
 
 class CategorySerializer(serializers.ModelSerializer):
     productCount = serializers.SerializerMethodField()
@@ -7,7 +12,7 @@ class CategorySerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Category
-        fields = ['id', 'name', 'description', 'productCount', 'status', 'created_by', 'created_at', 'date']
+        fields = ['id', 'company_slug', 'name', 'description', 'productCount', 'status', 'created_by', 'created_at', 'date']
 
     def get_productCount(self, obj):
         return obj.products.count()
@@ -25,7 +30,7 @@ class SupplierSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Supplier
-        fields = ['id', 'name', 'contact', 'email', 'phone', 'address', 'productCount', 'status', 'created_by', 'created_at', 'date']
+        fields = ['id', 'company_slug', 'name', 'contact', 'email', 'phone', 'address', 'productCount', 'status', 'created_by', 'created_at', 'date']
 
     def get_productCount(self, obj):
         return obj.products.count()
@@ -45,7 +50,7 @@ class ProductSerializer(serializers.ModelSerializer):
     class Meta:
         model = Product
         fields = [
-            'id', 'name', 'sku', 'category', 'category_name',
+            'id', 'company_slug', 'name', 'sku', 'category', 'category_name',
             'supplier', 'supplier_name', 'price', 'stock', 'threshold',
             'status', 'emoji', 'created_by', 'updated_at', 'created_at'
         ]
@@ -64,7 +69,7 @@ class StockMovementSerializer(serializers.ModelSerializer):
     class Meta:
         model = StockMovement
         fields = [
-            'id', 'product', 'product_name', 'type', 'quantity',
+            'id', 'company_slug', 'product', 'product_name', 'type', 'quantity',
             'user', 'reference', 'notes', 'balance', 'date'
         ]
 
@@ -84,7 +89,7 @@ class BranchTransferSerializer(serializers.ModelSerializer):
     class Meta:
         model = BranchTransfer
         fields = [
-            'id', 'product', 'product_name', 'product_sku', 'quantity',
+            'id', 'company_slug', 'product', 'product_name', 'product_sku', 'quantity',
             'destination', 'type', 'status', 'dispatched_by', 'approved_by',
             'reference', 'notes', 'date', 'returned_date'
         ]
@@ -108,4 +113,4 @@ class UserProfileSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = UserProfile
-        fields = ['id', 'name', 'email', 'role', 'status', 'avatar', 'last_login', 'lastLogin']
+        fields = ['id', 'company_slug', 'name', 'email', 'role', 'status', 'avatar', 'last_login', 'lastLogin']

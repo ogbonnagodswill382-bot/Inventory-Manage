@@ -1,6 +1,18 @@
 from django.db import models
 
+class CompanyWorkspace(models.Model):
+    name = models.CharField(max_length=150, unique=True)
+    slug = models.SlugField(max_length=150, unique=True)
+    contact_email = models.EmailField()
+    admin_name = models.CharField(max_length=150, default='Administrator')
+    admin_phone = models.CharField(max_length=50, blank=True, null=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"{self.name} ({self.slug})"
+
 class Category(models.Model):
+    company_slug = models.CharField(max_length=150, default='default', db_index=True)
     name = models.CharField(max_length=100)
     description = models.TextField(blank=True, default='')
     status = models.CharField(max_length=20, default='active')
@@ -11,6 +23,7 @@ class Category(models.Model):
         return self.name
 
 class Supplier(models.Model):
+    company_slug = models.CharField(max_length=150, default='default', db_index=True)
     name = models.CharField(max_length=150)
     contact = models.CharField(max_length=100)
     email = models.EmailField()
@@ -24,6 +37,7 @@ class Supplier(models.Model):
         return self.name
 
 class Product(models.Model):
+    company_slug = models.CharField(max_length=150, default='default', db_index=True)
     name = models.CharField(max_length=200)
     sku = models.CharField(max_length=50, unique=True)
     category = models.ForeignKey(Category, related_name='products', on_delete=models.CASCADE)
@@ -44,34 +58,36 @@ class StockMovement(models.Model):
         ('in', 'Stock In'),
         ('out', 'Stock Out'),
     )
+    company_slug = models.CharField(max_length=150, default='default', db_index=True)
     product = models.ForeignKey(Product, related_name='movements', on_delete=models.CASCADE)
-    type = models.CharField(max_length=10, choices=MOVEMENT_TYPES)
+    type = models.CharField(max_length=5, choices=MOVEMENT_TYPES)
     quantity = models.IntegerField()
-    user = models.CharField(max_length=100)
-    reference = models.CharField(max_length=50, blank=True)
-    notes = models.TextField(blank=True)
-    balance = models.IntegerField()
+    reference = models.CharField(max_length=100, blank=True, null=True)
+    user = models.CharField(max_length=100, default='Admin User')
+    notes = models.TextField(blank=True, null=True)
+    date = models.CharField(max_length=50, default='just now')
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
-        return f"{self.type.upper()} {self.quantity} - {self.product.name}"
+        return f"{self.type.upper()} - {self.quantity} x {self.product.name}"
 
 class BranchTransfer(models.Model):
     TRANSFER_TYPES = (
-        ('transfer', 'Inter-warehouse Transfer'),
-        ('supplier_return', 'Return to Supplier'),
+        ('branch_out', 'Inter-Branch Dispatch'),
+        ('supplier_return', 'Supplier Return'),
     )
-    TRANSFER_STATUS = (
-        ('dispatched', 'Dispatched'),
-        ('returned_to_stock', 'Returned to Stock'),
+    STATUS_CHOICES = (
+        ('dispatched', 'Dispatched Out'),
+        ('returned_to_stock', 'Approved & Restocked'),
     )
+    company_slug = models.CharField(max_length=150, default='default', db_index=True)
     product = models.ForeignKey(Product, related_name='transfers', on_delete=models.CASCADE)
-    quantity = models.IntegerField(default=1)
-    destination = models.CharField(max_length=250)
-    type = models.CharField(max_length=50, choices=TRANSFER_TYPES, default='transfer')
-    status = models.CharField(max_length=50, choices=TRANSFER_STATUS, default='dispatched')
-    dispatched_by = models.CharField(max_length=150, default='Administrator')
-    approved_by = models.CharField(max_length=150, blank=True, null=True)
+    type = models.CharField(max_length=20, choices=TRANSFER_TYPES, default='branch_out')
+    quantity = models.IntegerField()
+    destination = models.CharField(max_length=150)
+    status = models.CharField(max_length=30, choices=STATUS_CHOICES, default='dispatched')
+    dispatched_by = models.CharField(max_length=100, default='Administrator')
+    approved_by = models.CharField(max_length=100, blank=True, null=True)
     reference = models.CharField(max_length=100, blank=True, null=True)
     notes = models.TextField(blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
@@ -81,8 +97,10 @@ class BranchTransfer(models.Model):
         return f"{self.type.upper()} - {self.quantity} x {self.product.name} ({self.destination})"
 
 class UserProfile(models.Model):
+    company_slug = models.CharField(max_length=150, default='default', db_index=True)
     name = models.CharField(max_length=100)
     email = models.EmailField(unique=True)
+    phone = models.CharField(max_length=50, blank=True, null=True)
     role = models.CharField(max_length=50, default='Warehouse Staff')
     status = models.CharField(max_length=20, default='active')
     avatar = models.CharField(max_length=10, default='SK')
@@ -93,8 +111,10 @@ class UserProfile(models.Model):
         return self.name
 
 class ContactRequest(models.Model):
+    company_slug = models.CharField(max_length=150, default='default', db_index=True)
     name = models.CharField(max_length=100)
     email = models.EmailField()
+    phone = models.CharField(max_length=50, blank=True, null=True)
     message = models.TextField()
     status = models.CharField(max_length=20, default='pending')
     created_at = models.DateTimeField(auto_now_add=True)

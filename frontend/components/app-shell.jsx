@@ -35,6 +35,7 @@ import {
   ExternalLink,
   ShieldAlert,
   Mail,
+  Building2,
 } from "lucide-react";
 import { useState, useEffect, useRef } from "react";
 import { cn } from "@/lib/utils";
@@ -60,7 +61,7 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetTrigger } from "@/components/ui/sheet";
 import { toast } from "sonner";
 
 const nav = [
@@ -210,7 +211,7 @@ function SidebarContent({ onNavigate, collapsed = false, onToggleCollapse }) {
   const groups = Array.from(new Set(allowedNav.map((n) => n.group)));
 
   return (
-    <div className={cn("flex h-full flex-col bg-sidebar text-sidebar-foreground select-none transition-all duration-300", collapsed ? "w-16" : "w-64")}>
+    <div className="flex h-full min-h-full w-full flex-col bg-sidebar text-sidebar-foreground select-none">
       {/* Brand Header */}
       <div className={cn("flex items-center justify-between py-4 border-b border-sidebar-border/80", collapsed ? "px-3 flex-col gap-3" : "px-5")}>
         <Link href="/" onClick={onNavigate} className="flex items-center gap-3 min-w-0 group">
@@ -227,7 +228,10 @@ function SidebarContent({ onNavigate, collapsed = false, onToggleCollapse }) {
                   </span>
                 )}
               </div>
-              <div className="text-[11px] text-muted-foreground truncate">Inventory Suite</div>
+              <div className="text-[11px] text-primary font-medium truncate flex items-center gap-1 mt-0.5">
+                <Building2 className="h-3 w-3 shrink-0" />
+                <span className="truncate">{currentUser?.company_name || "Inventory Suite"}</span>
+              </div>
             </div>
           )}
         </Link>
@@ -302,7 +306,7 @@ function SidebarContent({ onNavigate, collapsed = false, onToggleCollapse }) {
       )}
 
       {/* Footer User Profile */}
-      <div className={cn("border-t border-sidebar-border p-3 flex items-center gap-2", collapsed ? "justify-center" : "justify-between")}>
+      <div className={cn("mt-auto shrink-0 border-t border-sidebar-border p-3 flex items-center gap-2", collapsed ? "justify-center" : "justify-between")}>
         <Link href="/profile" onClick={onNavigate} className="flex items-center gap-2.5 min-w-0 flex-1 hover:bg-sidebar-accent/60 p-1.5 rounded-lg transition">
           <Avatar className="h-8 w-8 shrink-0">
             <AvatarFallback className="bg-primary/15 text-primary text-xs font-semibold">
@@ -1009,6 +1013,7 @@ export function AppShell({ children }) {
   const [open, setOpen] = useState(false);
   const [collapsed, setCollapsed] = useState(false);
   const [checkingAuth, setCheckingAuth] = useState(true);
+  const [activeCompanyName, setActiveCompanyName] = useState("");
   const pathname = usePathname();
   const router = useRouter();
   
@@ -1028,12 +1033,15 @@ export function AppShell({ children }) {
     }
 
     const activeUser = getAuthUser();
-    if (activeUser && !isRouteAllowed(activeUser.role, pathname)) {
-      toast.error("Access Restricted", {
-        description: `Your role (${activeUser.role}) does not have permission to view ${pathname}.`,
-      });
-      router.push("/");
-      return;
+    if (activeUser) {
+      if (activeUser.company_name) setActiveCompanyName(activeUser.company_name);
+      if (!isRouteAllowed(activeUser.role, pathname)) {
+        toast.error("Access Restricted", {
+          description: `Your role (${activeUser.role}) does not have permission to view ${pathname}.`,
+        });
+        router.push("/");
+        return;
+      }
     }
 
     setCheckingAuth(false);
@@ -1055,12 +1063,24 @@ export function AppShell({ children }) {
   }
 
   return (
-    <div className="flex min-h-screen w-full bg-muted/30">
-      <aside className={cn("hidden lg:flex shrink-0 flex-col sticky top-0 h-screen border-r border-sidebar-border bg-sidebar z-40 transition-all duration-300 ease-in-out", collapsed ? "w-16" : "w-64")}>
+    <div className="min-h-screen w-full bg-muted/30">
+      {/* Desktop Fixed Sidebar */}
+      <aside
+        className={cn(
+          "hidden lg:flex flex-col fixed inset-y-0 left-0 z-40 h-full border-r border-sidebar-border bg-sidebar transition-all duration-300 ease-in-out overflow-hidden",
+          collapsed ? "w-16" : "w-64"
+        )}
+      >
         <SidebarContent collapsed={collapsed} onToggleCollapse={() => setCollapsed(!collapsed)} />
       </aside>
 
-      <div className="flex min-w-0 flex-1 flex-col transition-all duration-300 ease-in-out">
+      {/* Main Workspace Area */}
+      <div
+        className={cn(
+          "flex min-h-screen flex-col transition-all duration-300 ease-in-out",
+          collapsed ? "lg:pl-16" : "lg:pl-64"
+        )}
+      >
         <header className="sticky top-0 z-30 flex h-16 items-center gap-2 sm:gap-3 border-b bg-background/80 px-3 sm:px-6 backdrop-blur">
           <Sheet open={open} onOpenChange={setOpen}>
             <SheetTrigger asChild>
@@ -1068,12 +1088,23 @@ export function AppShell({ children }) {
                 <Menu className="h-5 w-5" />
               </Button>
             </SheetTrigger>
-            <SheetContent side="left" className="w-64 p-0">
+            <SheetContent side="left" className="w-72 max-w-[85vw] p-0 bg-sidebar border-r border-sidebar-border overflow-hidden">
+              <SheetHeader className="sr-only">
+                <SheetTitle>Navigation Menu</SheetTitle>
+                <SheetDescription>StockFlow inventory workspace navigation links.</SheetDescription>
+              </SheetHeader>
               <SidebarContent onNavigate={() => setOpen(false)} />
             </SheetContent>
           </Sheet>
 
           <GlobalSearch />
+
+          {activeCompanyName && (
+            <div className="hidden sm:flex items-center gap-1.5 rounded-full border bg-primary/10 px-3 py-1 text-xs font-semibold text-primary shrink-0 ml-1">
+              <Building2 className="h-3.5 w-3.5" />
+              <span className="truncate max-w-[180px]">{activeCompanyName}</span>
+            </div>
+          )}
 
           <div className="ml-auto flex items-center gap-1 sm:gap-2">
             <ThemeToggle />
