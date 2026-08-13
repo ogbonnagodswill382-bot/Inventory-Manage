@@ -3,7 +3,7 @@ from .models import Category, Supplier, Product, StockMovement, BranchTransfer, 
 
 class CategorySerializer(serializers.ModelSerializer):
     productCount = serializers.SerializerMethodField()
-    date = serializers.DateTimeField(source='created_at', format='%Y-%m-%d %H:%M', read_only=True)
+    date = serializers.SerializerMethodField()
 
     class Meta:
         model = Category
@@ -12,9 +12,16 @@ class CategorySerializer(serializers.ModelSerializer):
     def get_productCount(self, obj):
         return obj.products.count()
 
+    def get_date(self, obj):
+        if not obj.created_at:
+            return "Just now"
+        if hasattr(obj.created_at, 'strftime'):
+            return obj.created_at.strftime('%Y-%m-%d')
+        return str(obj.created_at)
+
 class SupplierSerializer(serializers.ModelSerializer):
     productCount = serializers.SerializerMethodField()
-    date = serializers.DateTimeField(source='created_at', format='%Y-%m-%d %H:%M', read_only=True)
+    date = serializers.SerializerMethodField()
 
     class Meta:
         model = Supplier
@@ -22,6 +29,13 @@ class SupplierSerializer(serializers.ModelSerializer):
 
     def get_productCount(self, obj):
         return obj.products.count()
+
+    def get_date(self, obj):
+        if not obj.created_at:
+            return "Just now"
+        if hasattr(obj.created_at, 'strftime'):
+            return obj.created_at.strftime('%Y-%m-%d')
+        return str(obj.created_at)
 
 class ProductSerializer(serializers.ModelSerializer):
     category_name = serializers.CharField(source='category.name', read_only=True)
@@ -45,7 +59,7 @@ class ProductSerializer(serializers.ModelSerializer):
 
 class StockMovementSerializer(serializers.ModelSerializer):
     product_name = serializers.CharField(source='product.name', read_only=True)
-    date = serializers.DateTimeField(source='created_at', format='%Y-%m-%d %H:%M', read_only=True)
+    date = serializers.SerializerMethodField()
 
     class Meta:
         model = StockMovement
@@ -54,11 +68,18 @@ class StockMovementSerializer(serializers.ModelSerializer):
             'user', 'reference', 'notes', 'balance', 'date'
         ]
 
+    def get_date(self, obj):
+        if not obj.created_at:
+            return "Just now"
+        if hasattr(obj.created_at, 'strftime'):
+            return obj.created_at.strftime('%Y-%m-%d %H:%M')
+        return str(obj.created_at)
+
 class BranchTransferSerializer(serializers.ModelSerializer):
     product_name = serializers.CharField(source='product.name', read_only=True)
     product_sku = serializers.CharField(source='product.sku', read_only=True)
-    date = serializers.DateTimeField(source='created_at', format='%Y-%m-%d %H:%M', read_only=True)
-    returned_date = serializers.DateTimeField(source='returned_at', format='%Y-%m-%d %H:%M', read_only=True)
+    date = serializers.SerializerMethodField()
+    returned_date = serializers.SerializerMethodField()
 
     class Meta:
         model = BranchTransfer
@@ -68,9 +89,23 @@ class BranchTransferSerializer(serializers.ModelSerializer):
             'reference', 'notes', 'date', 'returned_date'
         ]
 
+    def get_date(self, obj):
+        if not obj.created_at:
+            return "Just now"
+        if hasattr(obj.created_at, 'strftime'):
+            return obj.created_at.strftime('%Y-%m-%d %H:%M')
+        return str(obj.created_at)
+
+    def get_returned_date(self, obj):
+        if not obj.returned_at:
+            return None
+        if hasattr(obj.returned_at, 'strftime'):
+            return obj.returned_at.strftime('%Y-%m-%d %H:%M')
+        return str(obj.returned_at)
+
 class UserProfileSerializer(serializers.ModelSerializer):
     lastLogin = serializers.CharField(source='last_login')
 
     class Meta:
         model = UserProfile
-        fields = ['id', 'name', 'email', 'role', 'status', 'avatar', 'lastLogin']
+        fields = ['id', 'name', 'email', 'role', 'status', 'avatar', 'last_login', 'lastLogin']
