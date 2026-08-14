@@ -12,8 +12,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Sun, Moon, Laptop, Save, Download, CheckCircle2, Building2, Bell, Shield, Database, Coins, RefreshCw, Copy, Check, Smartphone, Send, BellRing, PhoneCall } from "lucide-react";
 import { applyTheme, getAppSettings, getStoredTheme, saveAppSettings, getCurrencySymbol } from "@/lib/theme";
-import { getProducts, updateProduct } from "@/lib/api";
-import { getAuthUser, setAuthUser, getCompanyStaffLink } from "@/lib/auth";
+import { getProducts, updateProduct, triggerSystemMaintenanceAPI } from "@/lib/api";
+import { getAuthUser, setAuthUser, getCompanyStaffLink, triggerSystemMaintenanceReset } from "@/lib/auth";
 import { requestPhoneNotificationPermission, sendPhonePushNotification } from "@/lib/notifications";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
@@ -556,6 +556,41 @@ export default function SettingsPage() {
                   </div>
                   <Button size="sm" onClick={handleDownloadBackup}>
                     <Download className="mr-1.5 h-3.5 w-3.5" /> Download JSON
+                  </Button>
+                </div>
+              </div>
+
+              {/* SYSTEM MAINTENANCE & STAFF SESSION RESET */}
+              <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 p-4 space-y-3">
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+                  <div className="space-y-1">
+                    <div className="font-semibold text-sm text-amber-400 flex items-center gap-2">
+                      <RefreshCw className="h-4 w-4 text-amber-400" /> App Update & Staff Session Maintenance Reset
+                    </div>
+                    <div className="text-xs text-amber-200/80">
+                      Completed an app update or maintenance? Trigger a session version bump to force all active staff members and company users across all devices to log back in without losing any workspace data.
+                    </div>
+                  </div>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="border-amber-500/40 text-amber-400 hover:bg-amber-500/20 text-xs font-semibold shrink-0 cursor-pointer"
+                    onClick={async () => {
+                      try {
+                        await triggerSystemMaintenanceAPI();
+                        toast.info("System Maintenance Reset Triggered 🛠️", {
+                          description: "Session version bumped. Invalidating sessions for re-login...",
+                        });
+                        setTimeout(() => {
+                          triggerSystemMaintenanceReset();
+                        }, 1200);
+                      } catch (e) {
+                        triggerSystemMaintenanceReset();
+                      }
+                    }}
+                  >
+                    <RefreshCw className="mr-1.5 h-3.5 w-3.5" />
+                    Force Staff Re-Login
                   </Button>
                 </div>
               </div>

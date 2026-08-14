@@ -241,3 +241,15 @@ export async function getDashboardSummary() {
 }
 
 export const getReports = getDashboardSummary;
+
+// System Maintenance Endpoints
+export async function getSystemMaintenanceStatus() {
+  return await fetchFromAPI('/system/maintenance/');
+}
+
+export async function triggerSystemMaintenanceAPI() {
+  return await fetchFromAPI('/system/maintenance/', {
+    method: 'POST',
+    body: JSON.stringify({ action: 'trigger_maintenance' }),
+  });
+}

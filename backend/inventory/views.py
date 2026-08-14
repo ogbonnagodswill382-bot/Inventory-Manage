@@ -633,3 +633,29 @@ class ContactAdminAPIView(APIView):
             'id': req.id,
             'company_email': company_email
         }, status=201)
+
+# Global system maintenance session tracker
+MAINTENANCE_STATE = {
+    'maintenance_mode': False,
+    'session_version': 'v2.4.0',
+    'last_updated': timezone.now().isoformat(),
+    'message': 'System operational and up to date.'
+}
+
+class SystemMaintenanceAPIView(APIView):
+    def get(self, request):
+        return Response(MAINTENANCE_STATE, status=200)
+
+    def post(self, request):
+        action = request.data.get('action')
+        if action == 'trigger_maintenance':
+            MAINTENANCE_STATE['session_version'] = f"v{int(timezone.now().timestamp())}"
+            MAINTENANCE_STATE['last_updated'] = timezone.now().isoformat()
+            MAINTENANCE_STATE['maintenance_mode'] = True
+            MAINTENANCE_STATE['message'] = 'System maintenance triggered. All staff sessions reset for re-login.'
+            return Response(MAINTENANCE_STATE, status=200)
+        elif action == 'clear_maintenance':
+            MAINTENANCE_STATE['maintenance_mode'] = False
+            MAINTENANCE_STATE['message'] = 'System operational.'
+            return Response(MAINTENANCE_STATE, status=200)
+        return Response({'error': 'Invalid maintenance action'}, status=400)

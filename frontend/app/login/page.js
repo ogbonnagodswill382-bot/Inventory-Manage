@@ -279,6 +279,17 @@ function LoginPageContent() {
           </div>
 
           {/* Mode Switcher Tabs (Only shown when NOT on a dedicated company staff link) */}
+          {searchParams?.get("reason") === "maintenance" && (
+            <div className="rounded-xl border border-amber-500/40 bg-amber-500/10 p-3.5 text-xs text-amber-500 space-y-1">
+              <div className="font-semibold flex items-center gap-1.5 text-amber-400">
+                <Sparkles className="h-4 w-4 shrink-0" /> System Maintenance & Update Complete 🛠️
+              </div>
+              <p className="text-amber-200/90 leading-relaxed">
+                The application was updated or underwent maintenance. To sync your active company session, please enter your login credentials below to log back in.
+              </p>
+            </div>
+          )}
+
           {!companySlugParam && (
             <div className="grid grid-cols-2 gap-1 rounded-xl bg-muted p-1 text-xs">
               <button

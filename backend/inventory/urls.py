@@ -4,7 +4,7 @@ from .views import (
     CompanyWorkspaceViewSet, CategoryViewSet, SupplierViewSet, ProductViewSet,
     StockMovementViewSet, BranchTransferViewSet, UserProfileViewSet,
     StockInAPIView, StockOutAPIView, ReportsAPIView,
-    LoginAPIView, RegisterAPIView, CompanyRegisterAPIView, CompanyLookupAPIView, ContactAdminAPIView
+    LoginAPIView, RegisterAPIView, CompanyRegisterAPIView, CompanyLookupAPIView, ContactAdminAPIView, SystemMaintenanceAPIView
 )
 
 router = DefaultRouter()
@@ -26,4 +26,5 @@ urlpatterns = [
     path('login/', LoginAPIView.as_view(), name='login'),
     path('register/', RegisterAPIView.as_view(), name='register'),
     path('contact-admin/', ContactAdminAPIView.as_view(), name='contact-admin'),
+    path('system/maintenance/', SystemMaintenanceAPIView.as_view(), name='system-maintenance'),
 ]
