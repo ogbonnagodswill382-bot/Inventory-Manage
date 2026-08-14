@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Truck, RotateCcw, CheckCircle, Clock, ShieldCheck, CornerDownLeft, Lock, Search, ChevronLeft, ChevronRight, Filter, Calendar } from "lucide-react";
+import { Truck, RotateCcw, CheckCircle, Clock, ShieldCheck, CornerDownLeft, Lock, Search, ChevronLeft, ChevronRight, Filter, Calendar, Plus } from "lucide-react";
 import { PageHeader } from "@/components/app-shell";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -11,18 +11,28 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { getTransfers, approveTransferReturn } from "@/lib/api";
+import { getTransfers, getProducts, createTransfer, approveTransferReturn } from "@/lib/api";
 import { getAuthUser, canApproveReturns } from "@/lib/auth";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 
 export default function TransfersPage() {
   const [transfers, setTransfers] = useState([]);
+  const [products, setProducts] = useState([]);
   const [currentUser, setCurrentUser] = useState(null);
   const [selectedTransfer, setSelectedTransfer] = useState(null);
   const [approverName, setApproverName] = useState("");
   const [returnNotes, setReturnNotes] = useState("");
   const [submitting, setSubmitting] = useState(false);
+
+  // New Transfer Modal States
+  const [openAddModal, setOpenAddModal] = useState(false);
+  const [selectedProdId, setSelectedProdId] = useState("");
+  const [transferQty, setTransferQty] = useState("1");
+  const [transferType, setTransferType] = useState("branch_out");
+  const [destination, setDestination] = useState("");
+  const [reference, setReference] = useState("");
+  const [transferNotes, setTransferNotes] = useState("");
 
   // Search & Pagination for 1000+ high-volume records
   const [search, setSearch] = useState("");
@@ -35,6 +45,10 @@ export default function TransfersPage() {
     if (data && Array.isArray(data)) {
       setTransfers(data);
     }
+    const prodData = await getProducts();
+    if (prodData && Array.isArray(prodData)) {
+      setProducts(prodData);
+    }
   }
 
   useEffect(() => {
@@ -43,6 +57,66 @@ export default function TransfersPage() {
     setCurrentUser(activeUser);
     if (activeUser) setApproverName(activeUser.name);
   }, []);
+
+  const selectedProduct = products.find((p) => String(p.id) === String(selectedProdId));
+
+  const handleOpenAddModal = () => {
+    setSelectedProdId("");
+    setTransferQty("1");
+    setTransferType("branch_out");
+    setDestination("");
+    setReference(`TRF-${Math.floor(1000 + Math.random() * 9000)}`);
+    setTransferNotes("");
+    setOpenAddModal(true);
+  };
+
+  const handleCreateTransfer = async (e) => {
+    e.preventDefault();
+    if (!selectedProdId) {
+      toast.error("Please select a product");
+      return;
+    }
+
+    const qty = Number(transferQty);
+    if (!qty || qty <= 0) {
+      toast.error("Please enter a valid transfer quantity");
+      return;
+    }
+
+    if (selectedProduct && selectedProduct.stock < qty) {
+      toast.error("Insufficient Stock!", {
+        description: `Cannot dispatch ${qty} units. Only ${selectedProduct.stock} units available in stock.`,
+      });
+      return;
+    }
+
+    setSubmitting(true);
+    const activeUser = getAuthUser();
+    const payload = {
+      product_id: selectedProdId,
+      product: selectedProdId,
+      quantity: qty,
+      type: transferType,
+      destination: destination.trim() || (transferType === "supplier_return" ? "Supplier Return Warehouse" : "Secondary Branch"),
+      reference: reference.trim() || `TRF-${Date.now().toString().slice(-4)}`,
+      notes: transferNotes.trim(),
+      dispatched_by: activeUser?.name || "Administrator",
+      user: activeUser?.name || "Administrator",
+      company_slug: activeUser?.company_slug || "default",
+    };
+
+    const res = await createTransfer(payload);
+    if (res && (res.id || res.message)) {
+      toast.success("Transfer Dispatched Successfully! 🚚", {
+        description: `${qty} units of "${selectedProduct?.name || 'product'}" dispatched out to ${payload.destination}.`,
+      });
+      setOpenAddModal(false);
+      await loadData();
+    } else {
+      toast.error(res?.error || "Failed to dispatch transfer");
+    }
+    setSubmitting(false);
+  };
 
   const isApprover = canApproveReturns(currentUser?.role);
   const dispatchedList = transfers.filter((t) => t.status === "dispatched");
@@ -124,7 +198,12 @@ export default function TransfersPage() {
     <div className="space-y-6">
       <PageHeader
         title="Inter-Branch Transfers & Supplier Returns"
-        description="Audit outbound shipments to secondary branches or suppliers with full Date & Time tracking. Scalable for 1000+ audit logs."
+        description="Audit outbound shipments to secondary branches or suppliers with full Date & Time tracking."
+        actions={
+          <Button onClick={handleOpenAddModal}>
+            <Plus className="mr-2 h-4 w-4" /> New Transfer / Return
+          </Button>
+        }
       />
 
       {/* KPI Overview */}
@@ -172,6 +251,110 @@ export default function TransfersPage() {
           </CardContent>
         </Card>
       </div>
+
+      {/* NEW TRANSFER / RETURN MODAL */}
+      <Dialog open={openAddModal} onOpenChange={setOpenAddModal}>
+        <DialogContent className="max-w-md">
+          <form onSubmit={handleCreateTransfer}>
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <Truck className="h-5 w-5 text-primary" /> New Inter-Branch Transfer / Return
+              </DialogTitle>
+              <DialogDescription className="text-xs text-muted-foreground mt-1">
+                Dispatch items to another branch or return defective/excess goods to a supplier.
+              </DialogDescription>
+            </DialogHeader>
+
+            <div className="space-y-3 py-3 text-xs sm:text-sm">
+              <div className="space-y-1">
+                <Label>Product</Label>
+                <Select value={selectedProdId} onValueChange={setSelectedProdId}>
+                  <SelectTrigger className="text-base sm:text-sm">
+                    <SelectValue placeholder="Select product to transfer" />
+                  </SelectTrigger>
+                  <SelectContent className="max-h-56">
+                    {products.map((p) => (
+                      <SelectItem key={p.id} value={String(p.id)}>
+                        {p.emoji || "📦"} {p.name} ({p.stock} available)
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <Label htmlFor="trf-qty">Quantity</Label>
+                  <Input
+                    id="trf-qty"
+                    type="number"
+                    min="1"
+                    value={transferQty}
+                    onChange={(e) => setTransferQty(e.target.value)}
+                    required
+                    className="text-base sm:text-sm"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <Label>Transfer Type</Label>
+                  <Select value={transferType} onValueChange={setTransferType}>
+                    <SelectTrigger className="text-base sm:text-sm">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="branch_out">Inter-Branch Dispatch</SelectItem>
+                      <SelectItem value="supplier_return">Supplier Return</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              <div className="space-y-1">
+                <Label htmlFor="trf-dest">Destination / Recipient</Label>
+                <Input
+                  id="trf-dest"
+                  placeholder={transferType === "supplier_return" ? "e.g. Acme Supplier Warehouse" : "e.g. Branch #2 - Lekki Store"}
+                  value={destination}
+                  onChange={(e) => setDestination(e.target.value)}
+                  className="text-base sm:text-sm"
+                />
+              </div>
+
+              <div className="space-y-1">
+                <Label htmlFor="trf-ref">Reference #</Label>
+                <Input
+                  id="trf-ref"
+                  placeholder="TRF-9021"
+                  value={reference}
+                  onChange={(e) => setReference(e.target.value)}
+                  className="text-base sm:text-sm"
+                />
+              </div>
+
+              <div className="space-y-1">
+                <Label htmlFor="trf-notes">Notes / Reason</Label>
+                <Textarea
+                  id="trf-notes"
+                  placeholder="Optional details or reason for dispatch..."
+                  value={transferNotes}
+                  onChange={(e) => setTransferNotes(e.target.value)}
+                  rows={2}
+                  className="text-base sm:text-sm"
+                />
+              </div>
+            </div>
+
+            <DialogFooter className="flex gap-2 sm:justify-end">
+              <Button type="button" variant="outline" onClick={() => setOpenAddModal(false)}>
+                Cancel
+              </Button>
+              <Button type="submit" disabled={submitting}>
+                {submitting ? "Dispatching..." : "Dispatch Transfer"}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
 
       {/* APPROVE RETURN DIALOG MODAL */}
       <Dialog open={!!selectedTransfer} onOpenChange={(v) => !v && setSelectedTransfer(null)}>

@@ -120,9 +120,57 @@ class BranchTransferViewSet(viewsets.ModelViewSet):
             return qs.filter(company_slug=company_slug)
         return qs
 
-    def perform_create(self, serializer):
-        company_slug = self.request.data.get('company_slug', 'default')
-        serializer.save(company_slug=company_slug)
+    def create(self, request, *args, **kwargs):
+        company_slug = request.data.get('company_slug', 'default')
+        product_id = request.data.get('product') or request.data.get('product_id')
+        quantity = int(request.data.get('quantity', 0))
+        destination = request.data.get('destination', '').strip()
+        transfer_type = request.data.get('type', 'branch_out')
+        dispatched_by = request.data.get('dispatched_by') or request.data.get('user') or 'Administrator'
+        reference = request.data.get('reference', '').strip()
+        notes = request.data.get('notes', '').strip()
+
+        if not product_id or quantity <= 0:
+            return Response({'error': 'Please select a valid product and quantity greater than zero.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            product = Product.objects.get(id=product_id)
+        except Product.DoesNotExist:
+            return Response({'error': 'Product not found'}, status=status.HTTP_404_NOT_FOUND)
+
+        if product.stock < quantity:
+            return Response({'error': f'Insufficient stock! Available: {product.stock} units, Requested: {quantity} units.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Deduct stock for outbound dispatch
+        product.stock -= quantity
+        product.updated_at = 'just now'
+        product.save()
+
+        # Audit movement
+        StockMovement.objects.create(
+            company_slug=company_slug,
+            product=product,
+            type='out',
+            quantity=quantity,
+            user=dispatched_by,
+            reference=reference or ('TRF' if transfer_type == 'branch_out' else 'RET'),
+            notes=f"Dispatched to {destination or 'Secondary Branch'}. {notes}".strip()
+        )
+
+        # Create transfer record
+        transfer = BranchTransfer.objects.create(
+            company_slug=company_slug,
+            product=product,
+            quantity=quantity,
+            destination=destination or ('Secondary Branch' if transfer_type == 'branch_out' else 'Supplier'),
+            type=transfer_type,
+            status='dispatched',
+            dispatched_by=dispatched_by,
+            reference=reference or f"TRF-{product.id}",
+            notes=notes
+        )
+
+        return Response(BranchTransferSerializer(transfer).data, status=status.HTTP_201_CREATED)
 
     @action(detail=True, methods=['post'])
     def approve_return(self, request, pk=None):
@@ -260,6 +308,8 @@ class StockOutAPIView(APIView):
         user = request.data.get('user', 'Staff')
         reference = request.data.get('reference', '')
         notes = request.data.get('notes', '')
+        destination = request.data.get('destination', '').strip()
+        reason = request.data.get('reason', 'sale')
 
         if not product_id or quantity <= 0:
             return Response({'error': 'Please select a valid product and quantity greater than zero.'}, status=400)
@@ -285,6 +335,20 @@ class StockOutAPIView(APIView):
             reference=reference,
             notes=notes
         )
+
+        # Create BranchTransfer log if this stock out is a transfer or return or has a destination
+        if reason in ['transfer', 'return'] or destination:
+            BranchTransfer.objects.create(
+                company_slug=company_slug,
+                product=product,
+                quantity=quantity,
+                destination=destination or ('Supplier Return' if reason == 'return' else 'Secondary Branch'),
+                type='supplier_return' if reason == 'return' else 'branch_out',
+                status='dispatched',
+                dispatched_by=user,
+                reference=reference or f"TRF-{product.id}",
+                notes=notes
+            )
 
         return Response({
             'message': 'Stock out recorded successfully',
