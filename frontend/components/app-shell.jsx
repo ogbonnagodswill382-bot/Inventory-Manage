@@ -1022,32 +1022,17 @@ export function AppShell({ children }) {
   useEffect(() => {
     applyTheme(getStoredTheme());
 
-    if (pathname === "/landing") {
-      if (isAuthenticated()) {
+    if (isPublicPage) {
+      if (pathname === "/landing" && isAuthenticated()) {
         router.replace("/");
         return;
       }
-      const registeredCompany = getRegisteredCompanySlug();
-      if (registeredCompany && registeredCompany !== "default") {
-        router.replace(`/login?company=${registeredCompany}`);
-        return;
-      }
-      setCheckingAuth(false);
-      return;
-    }
-
-    if (pathname === "/login") {
       setCheckingAuth(false);
       return;
     }
 
     if (!isAuthenticated()) {
-      const registeredCompany = getRegisteredCompanySlug();
-      if (registeredCompany && registeredCompany !== "default") {
-        router.push(`/login?company=${registeredCompany}`);
-      } else {
-        router.push("/landing");
-      }
+      router.push("/landing");
       return;
     }
 
