@@ -70,7 +70,7 @@ class StockMovementSerializer(serializers.ModelSerializer):
         model = StockMovement
         fields = [
             'id', 'company_slug', 'product', 'product_name', 'type', 'quantity',
-            'user', 'reference', 'notes', 'balance', 'date'
+            'user', 'reference', 'notes', 'date'
         ]
 
     def get_date(self, obj):

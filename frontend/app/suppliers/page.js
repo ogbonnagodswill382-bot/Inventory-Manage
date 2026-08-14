@@ -69,8 +69,8 @@ export default function SuppliersPage() {
 
   const handleSaveSupplier = async (e) => {
     e.preventDefault();
-    if (!name.trim() || !email.trim()) {
-      toast.error("Please enter supplier name and email");
+    if (!name.trim()) {
+      toast.error("Please enter a supplier name");
       return;
     }
 
@@ -79,10 +79,10 @@ export default function SuppliersPage() {
 
     const payload = {
       name: name.trim(),
-      contact: contact.trim(),
-      email: email.trim(),
-      phone: phone.trim(),
-      address: address.trim(),
+      contact: contact.trim() || "N/A",
+      email: email.trim() || "N/A",
+      phone: phone.trim() || "N/A",
+      address: address.trim() || "N/A",
       status: editSupplier ? editSupplier.status : "active",
       created_by: activeUser?.name || "Administrator",
       company_slug: activeUser?.company_slug || "default",
@@ -99,7 +99,7 @@ export default function SuppliersPage() {
         pushSystemNotification({
           title: `New Supplier Added: ${name.trim()}`,
           sub: email.trim() || contact.trim() || 'Supplier registered',
-          message: `Supplier "${name.trim()}" (${email.trim()}) was registered by ${activeUser?.name || 'Administrator'}.`,
+          message: `Supplier "${name.trim()}" was registered by ${activeUser?.name || 'Administrator'}.`,
           type: "info",
           category: "activity",
           link: "/suppliers",
@@ -178,7 +178,7 @@ export default function SuppliersPage() {
                 <Label htmlFor="sup-contact">Contact Representative</Label>
                 <Input
                   id="sup-contact"
-                  placeholder="e.g. John Doe"
+                  placeholder="e.g. John Doe (Optional)"
                   value={contact}
                   onChange={(e) => setContact(e.target.value)}
                 />
@@ -189,11 +189,10 @@ export default function SuppliersPage() {
                   <Label htmlFor="sup-email">Email Address</Label>
                   <Input
                     id="sup-email"
-                    type="email"
-                    placeholder="orders@acme.com"
+                    type="text"
+                    placeholder="orders@acme.com (Optional)"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    required
                   />
                 </div>
 
