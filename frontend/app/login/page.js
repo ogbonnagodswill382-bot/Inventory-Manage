@@ -210,11 +210,13 @@ function LoginPageContent() {
             </div>
           </div>
 
-          <Button asChild variant="outline" size="sm" className="text-xs font-semibold gap-1.5 rounded-full border-border/80 hover:bg-primary/10 hover:text-primary transition">
-            <Link href="/landing">
-              <ArrowLeft className="h-3.5 w-3.5" /> Back to Landing Page
-            </Link>
-          </Button>
+          {!companyWorkspace && !companySlugParam && (
+            <Button asChild variant="outline" size="sm" className="text-xs font-semibold gap-1.5 rounded-full border-border/80 hover:bg-primary/10 hover:text-primary transition">
+              <Link href="/landing">
+                <ArrowLeft className="h-3.5 w-3.5" /> Product Overview
+              </Link>
+            </Button>
+          )}
         </div>
 
         <div className="relative z-10 max-w-md space-y-5">
@@ -262,11 +264,17 @@ function LoginPageContent() {
       <div className="flex items-center justify-center p-6 md:p-12">
         <div className="w-full max-w-md space-y-6">
           <div className="flex items-center justify-between border-b pb-3">
-            <Button asChild variant="ghost" size="sm" className="text-xs font-semibold text-muted-foreground hover:text-primary gap-1.5 p-0 hover:bg-transparent cursor-pointer">
-              <Link href="/landing">
-                <ArrowLeft className="h-4 w-4" /> Back to Landing Page
-              </Link>
-            </Button>
+            {companyWorkspace ? (
+              <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-primary">
+                <Building2 className="h-3.5 w-3.5" /> {companyWorkspace.name} Portal
+              </span>
+            ) : !companySlugParam ? (
+              <Button asChild variant="ghost" size="sm" className="text-xs font-semibold text-muted-foreground hover:text-primary gap-1.5 p-0 hover:bg-transparent cursor-pointer">
+                <Link href="/landing">
+                  <ArrowLeft className="h-4 w-4" /> Product Overview
+                </Link>
+              </Button>
+            ) : <span />}
             <span className="text-[11px] text-muted-foreground font-mono">StockFlow v2.4.1</span>
           </div>
 
