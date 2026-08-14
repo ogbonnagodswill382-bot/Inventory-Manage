@@ -1,6 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
+import { isAuthenticated } from "@/lib/auth";
 import Link from "next/link";
 import {
   Boxes,
@@ -32,9 +34,16 @@ import { Card, CardContent } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 
 export default function LandingPage() {
+  const router = useRouter();
   const [activeFaq, setActiveFaq] = useState(null);
   const [demoCurrency, setDemoCurrency] = useState("NGN"); // NGN (₦) or USD ($)
   const [demoStock, setDemoStock] = useState(45);
+
+  useEffect(() => {
+    if (isAuthenticated()) {
+      router.replace("/");
+    }
+  }, [router]);
 
   const faqs = [
     {

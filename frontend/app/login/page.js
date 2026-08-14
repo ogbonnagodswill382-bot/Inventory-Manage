@@ -14,13 +14,20 @@ import { Textarea } from "@/components/ui/textarea";
 import { loginUser, registerCompanyWorkspace, getCompanyWorkspace, sendContactAdmin } from "@/lib/api";
 import { pushSystemNotification } from "@/components/app-shell";
 import { getAppSettings } from "@/lib/theme";
-import { setAuthUser } from "@/lib/auth";
+import { setAuthUser, isAuthenticated } from "@/lib/auth";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 
 function LoginPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
+
+  useEffect(() => {
+    const reason = searchParams?.get("reason");
+    if (!reason && isAuthenticated()) {
+      router.replace("/");
+    }
+  }, [router, searchParams]);
 
   const companySlugParam = searchParams?.get("company") || searchParams?.get("w") || "";
   const [companyWorkspace, setCompanyWorkspace] = useState(null);
