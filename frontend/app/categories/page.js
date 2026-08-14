@@ -80,7 +80,7 @@ export default function CategoriesPage() {
     } else {
       res = await createCategory(payload);
       if (res && res.id) {
-        toast.success("Category created in Django database!");
+        toast.success("Category created successfully!");
         pushSystemNotification({
           title: `New Category Created: ${name.trim()}`,
           sub: description.trim() || 'Category created',
@@ -126,7 +126,7 @@ export default function CategoriesPage() {
     <div className="space-y-6">
       <PageHeader
         title="Categories"
-        description="Group your products into organized categories with Date & Time tracking. Loaded 100% from Django database."
+        description="Group your products into organized categories with real-time tracking."
         actions={
           <Button onClick={handleOpenAddModal}>
             <Plus className="mr-2 h-4 w-4" /> Add category
@@ -140,7 +140,7 @@ export default function CategoriesPage() {
             <DialogHeader>
               <DialogTitle>{editCategory ? "Edit category" : "New category"}</DialogTitle>
               <DialogDescription>
-                {editCategory ? "Update category attributes in Django database." : "Create a new category in Django database."}
+                {editCategory ? "Update category details and attributes." : "Create a new category for your products."}
               </DialogDescription>
             </DialogHeader>
             <div className="space-y-4 py-4">
@@ -229,7 +229,7 @@ export default function CategoriesPage() {
                   <TableRow>
                     <TableCell colSpan={6} className="text-center py-10 text-muted-foreground">
                       <FolderTree className="h-8 w-8 mx-auto mb-2 text-muted-foreground/40" />
-                      No categories found in Django database. Click "+ Add Category" to create one.
+                      No categories found. Click "+ Add Category" to create one.
                     </TableCell>
                   </TableRow>
                 ) : (

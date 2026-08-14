@@ -100,7 +100,7 @@ export default function AlertsPage() {
             <p className="font-semibold text-base text-foreground">All stock levels healthy!</p>
             <p className="text-xs text-muted-foreground mt-1">
               {activeFilter === "all"
-                ? "No low stock or out-of-stock items detected in your database."
+                ? "No low stock or out-of-stock items detected in your workspace."
                 : `No items matching filter "${activeFilter.replace("_", " ")}".`}
             </p>
           </CardContent>

@@ -94,7 +94,7 @@ export default function SuppliersPage() {
     } else {
       res = await createSupplier(payload);
       if (res && res.id) {
-        toast.success("Supplier registered in Django database!");
+        toast.success("Supplier registered successfully!");
         pushSystemNotification({
           title: `New Supplier Added: ${name.trim()}`,
           sub: email.trim() || contact.trim() || 'Supplier registered',
@@ -143,7 +143,7 @@ export default function SuppliersPage() {
     <div className="space-y-6">
       <PageHeader
         title="Suppliers"
-        description="Manage vendor details and contact information with Date & Time tracking. Loaded 100% from Django database."
+        description="Manage vendor details, contacts, and supply history."
         actions={
           <Button onClick={handleOpenAddModal}>
             <Plus className="mr-2 h-4 w-4" /> Add supplier
@@ -157,7 +157,7 @@ export default function SuppliersPage() {
             <DialogHeader>
               <DialogTitle>{editSupplier ? "Edit supplier" : "New supplier"}</DialogTitle>
               <DialogDescription>
-                {editSupplier ? "Update vendor details in Django database." : "Add a vendor to Django database."}
+                {editSupplier ? "Update vendor details and contact info." : "Add a new vendor or supplier."}
               </DialogDescription>
             </DialogHeader>
 
@@ -284,7 +284,7 @@ export default function SuppliersPage() {
                   <TableRow>
                     <TableCell colSpan={7} className="text-center py-10 text-muted-foreground">
                       <Truck className="h-8 w-8 mx-auto mb-2 text-muted-foreground/40" />
-                      No suppliers found in Django database. Click "+ Add Supplier" to create one.
+                      No suppliers found. Click "+ Add Supplier" to create one.
                     </TableCell>
                   </TableRow>
                 ) : (

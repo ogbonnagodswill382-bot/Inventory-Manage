@@ -416,7 +416,7 @@ function UsersContent() {
                 {userList.length === 0 ? (
                   <TableRow>
                     <TableCell colSpan={4} className="text-center py-10 text-muted-foreground text-xs">
-                      No team members found in database.
+                      No team members found.
                     </TableCell>
                   </TableRow>
                 ) : (
