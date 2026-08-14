@@ -39,7 +39,7 @@ import {
 } from "lucide-react";
 import { useState, useEffect, useRef } from "react";
 import { cn } from "@/lib/utils";
-import { getAuthUser, isAuthenticated, isRouteAllowed, logoutUser } from "@/lib/auth";
+import { getAuthUser, isAuthenticated, isRouteAllowed, logoutUser, getRegisteredCompanySlug } from "@/lib/auth";
 import { applyTheme, getStoredTheme, formatCurrency, getAppSettings } from "@/lib/theme";
 import { getProducts, getCategories, getSuppliers, getMovements, getTransfers, getContactRequests } from "@/lib/api";
 import { ProductIcon } from "@/components/product-icon";
@@ -1022,13 +1022,32 @@ export function AppShell({ children }) {
   useEffect(() => {
     applyTheme(getStoredTheme());
 
-    if (isPublicPage) {
+    if (pathname === "/landing") {
+      if (isAuthenticated()) {
+        router.replace("/");
+        return;
+      }
+      const registeredCompany = getRegisteredCompanySlug();
+      if (registeredCompany && registeredCompany !== "default") {
+        router.replace(`/login?company=${registeredCompany}`);
+        return;
+      }
+      setCheckingAuth(false);
+      return;
+    }
+
+    if (pathname === "/login") {
       setCheckingAuth(false);
       return;
     }
 
     if (!isAuthenticated()) {
-      router.push("/landing");
+      const registeredCompany = getRegisteredCompanySlug();
+      if (registeredCompany && registeredCompany !== "default") {
+        router.push(`/login?company=${registeredCompany}`);
+      } else {
+        router.push("/landing");
+      }
       return;
     }
 
@@ -1128,7 +1147,7 @@ export function AppShell({ children }) {
             </a>. All rights reserved.
           </div>
           <div className="flex gap-4">
-            <Link href="/landing" className="hover:underline">Product Overview</Link>
+            <Link href="/" className="hover:underline">Dashboard Overview</Link>
             <span>v2.4.1</span>
             <span>Support</span>
           </div>

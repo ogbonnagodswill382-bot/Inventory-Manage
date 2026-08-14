@@ -97,12 +97,37 @@ export function getAuthUser() {
   }
 }
 
+const REGISTERED_COMPANY_KEY = "stockflow_registered_company_slug";
+
+/**
+ * Save registered company slug to localStorage memory.
+ */
+export function setRegisteredCompanySlug(slug) {
+  if (typeof window === "undefined" || !slug || slug === "default") return;
+  try {
+    localStorage.setItem(REGISTERED_COMPANY_KEY, slug);
+  } catch (e) {}
+}
+
+/**
+ * Get registered company slug from localStorage memory.
+ */
+export function getRegisteredCompanySlug() {
+  if (typeof window === "undefined") return null;
+  try {
+    return localStorage.getItem(REGISTERED_COMPANY_KEY) || null;
+  } catch (e) {
+    return null;
+  }
+}
+
 /**
  * Get current company_slug for active session.
  */
 export function getCompanySlug() {
   const user = getAuthUser();
-  return user?.company_slug || "default";
+  if (user?.company_slug) return user.company_slug;
+  return getRegisteredCompanySlug() || "default";
 }
 
 /**
@@ -133,6 +158,9 @@ export function setAuthUser(user) {
       session_version: user.session_version || currentVersion,
     };
     localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(formatted));
+    if (formatted.company_slug && formatted.company_slug !== "default") {
+      setRegisteredCompanySlug(formatted.company_slug);
+    }
     try {
       const { applyTheme, getStoredTheme } = require("@/lib/theme");
       applyTheme(getStoredTheme());

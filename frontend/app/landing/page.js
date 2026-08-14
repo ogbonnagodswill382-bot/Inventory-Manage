@@ -42,6 +42,11 @@ export default function LandingPage() {
   useEffect(() => {
     if (isAuthenticated()) {
       router.replace("/");
+      return;
+    }
+    const registeredCompany = getRegisteredCompanySlug();
+    if (registeredCompany && registeredCompany !== "default") {
+      router.replace(`/login?company=${registeredCompany}`);
     }
   }, [router]);
 
