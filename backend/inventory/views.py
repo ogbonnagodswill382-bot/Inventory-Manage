@@ -4,7 +4,7 @@ from rest_framework.response import Response
 from rest_framework.decorators import action
 from django.contrib.auth import authenticate
 from django.contrib.auth.models import User
-from django.db.models import F, Sum
+from django.db.models import F, Sum, Q
 from django.utils import timezone
 from django.utils.text import slugify
 from .models import CompanyWorkspace, Category, Supplier, Product, StockMovement, BranchTransfer, UserProfile, ContactRequest
@@ -25,8 +25,8 @@ class CategoryViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         qs = super().get_queryset()
         company_slug = self.request.query_params.get('company_slug')
-        if company_slug:
-            return qs.filter(company_slug=company_slug)
+        if company_slug and company_slug != 'all':
+            return qs.filter(Q(company_slug=company_slug) | Q(company_slug='default') | Q(company_slug=''))
         return qs
 
     def perform_create(self, serializer):
@@ -40,8 +40,8 @@ class SupplierViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         qs = super().get_queryset()
         company_slug = self.request.query_params.get('company_slug')
-        if company_slug:
-            return qs.filter(company_slug=company_slug)
+        if company_slug and company_slug != 'all':
+            return qs.filter(Q(company_slug=company_slug) | Q(company_slug='default') | Q(company_slug=''))
         return qs
 
     def perform_create(self, serializer):
@@ -55,8 +55,8 @@ class ProductViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         qs = super().get_queryset()
         company_slug = self.request.query_params.get('company_slug')
-        if company_slug:
-            return qs.filter(company_slug=company_slug)
+        if company_slug and company_slug != 'all':
+            return qs.filter(Q(company_slug=company_slug) | Q(company_slug='default') | Q(company_slug=''))
         return qs
 
     def create(self, request, *args, **kwargs):
@@ -105,8 +105,8 @@ class StockMovementViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         qs = super().get_queryset()
         company_slug = self.request.query_params.get('company_slug')
-        if company_slug:
-            return qs.filter(company_slug=company_slug)
+        if company_slug and company_slug != 'all':
+            return qs.filter(Q(company_slug=company_slug) | Q(company_slug='default') | Q(company_slug=''))
         return qs
 
 class BranchTransferViewSet(viewsets.ModelViewSet):
@@ -116,8 +116,8 @@ class BranchTransferViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         qs = super().get_queryset()
         company_slug = self.request.query_params.get('company_slug')
-        if company_slug:
-            return qs.filter(company_slug=company_slug)
+        if company_slug and company_slug != 'all':
+            return qs.filter(Q(company_slug=company_slug) | Q(company_slug='default') | Q(company_slug=''))
         return qs
 
     def create(self, request, *args, **kwargs):
@@ -217,8 +217,8 @@ class UserProfileViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         qs = super().get_queryset()
         company_slug = self.request.query_params.get('company_slug')
-        if company_slug:
-            return qs.filter(company_slug=company_slug)
+        if company_slug and company_slug != 'all':
+            return qs.filter(Q(company_slug=company_slug) | Q(company_slug='default') | Q(company_slug=''))
         return qs
 
     def create(self, request, *args, **kwargs):
@@ -363,10 +363,11 @@ class ReportsAPIView(APIView):
         categories = Category.objects.all()
         suppliers = Supplier.objects.all()
 
-        if company_slug:
-            products = products.filter(company_slug=company_slug)
-            categories = categories.filter(company_slug=company_slug)
-            suppliers = suppliers.filter(company_slug=company_slug)
+        if company_slug and company_slug != 'all':
+            filter_q = Q(company_slug=company_slug) | Q(company_slug='default') | Q(company_slug='')
+            products = products.filter(filter_q)
+            categories = categories.filter(filter_q)
+            suppliers = suppliers.filter(filter_q)
 
         total_products = products.count()
         total_categories = categories.count()
