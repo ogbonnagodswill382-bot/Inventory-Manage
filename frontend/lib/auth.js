@@ -133,6 +133,10 @@ export function setAuthUser(user) {
       session_version: user.session_version || currentVersion,
     };
     localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(formatted));
+    try {
+      const { applyTheme, getStoredTheme } = require("@/lib/theme");
+      applyTheme(getStoredTheme());
+    } catch (e) {}
   } catch (e) {
     console.error("Failed to save auth session:", e);
   }

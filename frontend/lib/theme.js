@@ -2,11 +2,32 @@ const THEME_STORAGE_KEY = "stockflow_app_theme";
 const SETTINGS_STORAGE_KEY = "stockflow_app_settings";
 
 /**
- * Get active theme from localStorage ("light" | "dark" | "system"). Default "dark".
+ * Get storage key for active user's personal theme preference.
+ */
+function getUserThemeKey() {
+  if (typeof window === "undefined") return THEME_STORAGE_KEY;
+  try {
+    const authData = localStorage.getItem("stockflow_auth_user");
+    if (authData) {
+      const user = JSON.parse(authData);
+      const userIdentifier = user.email || user.username || user.name;
+      if (userIdentifier) {
+        return `${THEME_STORAGE_KEY}_${userIdentifier.toLowerCase().replace(/[^a-z0-9]/g, "_")}`;
+      }
+    }
+  } catch (e) {}
+  return THEME_STORAGE_KEY;
+}
+
+/**
+ * Get active theme from localStorage for current user ("light" | "dark" | "system"). Default "dark".
  */
 export function getStoredTheme() {
   if (typeof window === "undefined") return "dark";
   try {
+    const key = getUserThemeKey();
+    const stored = localStorage.getItem(key);
+    if (stored) return stored;
     return localStorage.getItem(THEME_STORAGE_KEY) || "dark";
   } catch (e) {
     return "dark";
@@ -15,12 +36,14 @@ export function getStoredTheme() {
 
 /**
  * Apply theme to document.documentElement ("light" | "dark" | "system").
- * ONLY called when the user explicitly clicks the theme selector or header theme button.
+ * Saves preference under active user's personal key.
  */
 export function applyTheme(mode) {
   if (typeof window === "undefined") return;
   try {
     const root = document.documentElement;
+    const key = getUserThemeKey();
+    localStorage.setItem(key, mode);
     localStorage.setItem(THEME_STORAGE_KEY, mode);
 
     let effectiveDark = false;
