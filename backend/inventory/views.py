@@ -145,8 +145,7 @@ class BranchTransferViewSet(viewsets.ModelViewSet):
             quantity=transfer.quantity,
             user=approved_by,
             reference=f"RET-{transfer.id}",
-            notes=f"Returned from {transfer.destination} ({'Supplier' if transfer.type == 'supplier_return' else 'Branch'}). Approved by {approved_by}. {notes}".strip(),
-            balance=product.stock
+            notes=f"Returned from {transfer.destination} ({'Supplier' if transfer.type == 'supplier_return' else 'Branch'}). Approved by {approved_by}. {notes}".strip()
         )
 
         transfer.status = 'returned_to_stock'
@@ -244,8 +243,7 @@ class StockInAPIView(APIView):
             quantity=quantity,
             user=user,
             reference=reference,
-            notes=notes,
-            balance=product.stock
+            notes=notes
         )
 
         return Response({
@@ -285,8 +283,7 @@ class StockOutAPIView(APIView):
             quantity=quantity,
             user=user,
             reference=reference,
-            notes=notes,
-            balance=product.stock
+            notes=notes
         )
 
         return Response({

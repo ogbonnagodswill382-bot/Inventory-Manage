@@ -85,6 +85,7 @@ export default function SuppliersPage() {
       address: address.trim(),
       status: editSupplier ? editSupplier.status : "active",
       created_by: activeUser?.name || "Administrator",
+      company_slug: activeUser?.company_slug || "default",
     };
 
     let res;

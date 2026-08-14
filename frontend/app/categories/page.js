@@ -71,6 +71,7 @@ export default function CategoriesPage() {
       description: description.trim(),
       status: editCategory ? editCategory.status : "active",
       created_by: activeUser?.name || "Administrator",
+      company_slug: activeUser?.company_slug || "default",
     };
 
     let res;

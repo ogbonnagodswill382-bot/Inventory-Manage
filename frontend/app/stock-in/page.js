@@ -79,6 +79,7 @@ function StockInForm() {
       reference: reference.trim() || `PO-${Date.now().toString().slice(-4)}`,
       notes,
       user: activeUser?.name || "Administrator",
+      company_slug: activeUser?.company_slug || "default",
     });
 
     if (res && res.message) {

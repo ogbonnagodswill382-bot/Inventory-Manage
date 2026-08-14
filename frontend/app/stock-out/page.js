@@ -83,6 +83,7 @@ export default function StockOutPage() {
       destination: destination.trim(),
       reason: reason,
       user: activeUser?.name || "Administrator",
+      company_slug: activeUser?.company_slug || "default",
     });
 
     if (res && res.message) {

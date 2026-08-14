@@ -112,6 +112,7 @@ export default function ProductsPage() {
       threshold: parseInt(threshold),
       emoji,
       created_by: activeUser?.name || "Administrator",
+      company_slug: activeUser?.company_slug || "default",
     };
 
     if (editProduct) {
@@ -263,7 +264,7 @@ export default function ProductsPage() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-2">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div className="space-y-1">
                   <Label>Category</Label>
                   <Select value={categoryId} onValueChange={setCategoryId}>
@@ -288,7 +289,7 @@ export default function ProductsPage() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-3 gap-2">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <div className="space-y-1">
                   <Label>Price ({currencySymbol})</Label>
                   <Input type="number" step="0.01" value={price} onChange={(e) => setPrice(e.target.value)} required />

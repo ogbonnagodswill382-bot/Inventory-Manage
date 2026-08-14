@@ -7,8 +7,8 @@ export async function fetchFromAPI(endpoint, options = {}) {
     const slug = getCompanySlug();
     let url = `${API_BASE_URL}${endpoint}`;
 
-    // Attach company_slug query parameter to GET requests if not present
-    if (slug && slug !== 'default' && (!options.method || options.method.toUpperCase() === 'GET')) {
+    // Attach company_slug query parameter to GET/DELETE requests if not present
+    if (slug && (!options.method || options.method.toUpperCase() === 'GET' || options.method.toUpperCase() === 'DELETE')) {
       const joinChar = url.includes('?') ? '&' : '?';
       if (!url.includes('company_slug=')) {
         url = `${url}${joinChar}company_slug=${encodeURIComponent(slug)}`;
@@ -17,7 +17,7 @@ export async function fetchFromAPI(endpoint, options = {}) {
 
     // Attach company_slug to POST / PUT request JSON payloads if body exists
     let body = options.body;
-    if (slug && slug !== 'default' && body && typeof body === 'string') {
+    if (slug && body && typeof body === 'string') {
       try {
         const parsed = JSON.parse(body);
         if (!parsed.company_slug) {
