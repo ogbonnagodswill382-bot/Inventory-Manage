@@ -559,41 +559,6 @@ export default function SettingsPage() {
                   </Button>
                 </div>
               </div>
-
-              {/* SYSTEM MAINTENANCE & STAFF SESSION RESET */}
-              <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 p-4 space-y-3">
-                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-                  <div className="space-y-1">
-                    <div className="font-semibold text-sm text-amber-400 flex items-center gap-2">
-                      <RefreshCw className="h-4 w-4 text-amber-400" /> App Update & Staff Session Maintenance Reset
-                    </div>
-                    <div className="text-xs text-amber-200/80">
-                      Completed an app update or maintenance? Trigger a session version bump to force all active staff members and company users across all devices to log back in without losing any workspace data.
-                    </div>
-                  </div>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    className="border-amber-500/40 text-amber-400 hover:bg-amber-500/20 text-xs font-semibold shrink-0 cursor-pointer"
-                    onClick={async () => {
-                      try {
-                        await triggerSystemMaintenanceAPI();
-                        toast.info("System Maintenance Reset Triggered 🛠️", {
-                          description: "Session version bumped. Invalidating sessions for re-login...",
-                        });
-                        setTimeout(() => {
-                          triggerSystemMaintenanceReset();
-                        }, 1200);
-                      } catch (e) {
-                        triggerSystemMaintenanceReset();
-                      }
-                    }}
-                  >
-                    <RefreshCw className="mr-1.5 h-3.5 w-3.5" />
-                    Force Staff Re-Login
-                  </Button>
-                </div>
-              </div>
             </CardContent>
           </Card>
         </TabsContent>
