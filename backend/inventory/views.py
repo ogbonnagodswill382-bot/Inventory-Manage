@@ -232,12 +232,12 @@ class UserProfileViewSet(viewsets.ModelViewSet):
         if not name or not email:
             return Response({'error': 'Name and Email are required'}, status=400)
 
-        if UserProfile.objects.filter(email=email).exists():
+        if UserProfile.objects.filter(email__iexact=email).exists():
             return Response({'error': 'A team member with this email already exists'}, status=400)
 
         initial_password = password if password else f"staff@{User.objects.count() + 100}"
         username = email.split('@')[0]
-        if User.objects.filter(username=username).exists():
+        if User.objects.filter(username__iexact=username).exists():
             username = f"{username}_{User.objects.count() + 1}"
 
         django_user = User.objects.create_user(username=username, email=email, password=initial_password)
@@ -262,6 +262,54 @@ class UserProfileViewSet(viewsets.ModelViewSet):
             'initial_password': initial_password,
             'username': username,
         }, status=status.HTTP_201_CREATED)
+
+    def update(self, request, *args, **kwargs):
+        partial = kwargs.pop('partial', False)
+        instance = self.get_object()
+
+        new_name = request.data.get('name', instance.name).strip() if 'name' in request.data else instance.name
+        new_email = request.data.get('email', instance.email).strip() if 'email' in request.data else instance.email
+        new_role = request.data.get('role', instance.role) if 'role' in request.data else instance.role
+        new_status = request.data.get('status', instance.status) if 'status' in request.data else instance.status
+        new_password = request.data.get('password', '').strip()
+        avatar = request.data.get('avatar', instance.avatar) if 'avatar' in request.data else instance.avatar
+
+        # Find linked Django User
+        django_user = User.objects.filter(Q(email__iexact=instance.email) | Q(username__iexact=instance.email.split('@')[0])).first()
+        if not django_user and new_email:
+            django_user = User.objects.filter(email__iexact=new_email).first()
+
+        if django_user:
+            django_user.email = new_email
+            django_user.first_name = new_name
+            if new_password:
+                django_user.set_password(new_password)
+            django_user.is_active = (new_status not in ['blocked', 'inactive'])
+            if new_role == 'Administrator':
+                django_user.is_staff = True
+                django_user.is_superuser = True
+            else:
+                django_user.is_staff = False
+                django_user.is_superuser = False
+            django_user.save()
+        elif new_password and new_email:
+            username = new_email.split('@')[0]
+            if User.objects.filter(username__iexact=username).exists():
+                username = f"{username}_{User.objects.count() + 1}"
+            django_user = User.objects.create_user(username=username, email=new_email, password=new_password)
+            django_user.first_name = new_name
+            django_user.is_active = (new_status not in ['blocked', 'inactive'])
+            django_user.save()
+
+        instance.name = new_name
+        instance.email = new_email
+        instance.role = new_role
+        instance.status = new_status
+        instance.avatar = avatar
+        instance.save()
+
+        return Response(UserProfileSerializer(instance).data)
+
 
 class StockInAPIView(APIView):
     def post(self, request):
@@ -398,65 +446,113 @@ class LoginAPIView(APIView):
         if not email_or_user or not password:
             return Response({'error': 'Please enter email/username and password'}, status=400)
 
-        try:
-            profiles = UserProfile.objects.filter(email=email_or_user)
-            if company_slug:
-                profiles = profiles.filter(company_slug=company_slug)
-            profile = profiles.first()
-            if profile and profile.status in ['blocked', 'inactive']:
-                return Response({'error': 'Your account has been suspended/blocked by the Administrator.'}, status=403)
-        except UserProfile.DoesNotExist:
-            profile = None
+        # 1. Search Django User model (case-insensitive)
+        django_user = User.objects.filter(
+            Q(email__iexact=email_or_user) | Q(username__iexact=email_or_user)
+        ).first()
 
-        user = authenticate(username=email_or_user, password=password)
-        if user is None:
-            try:
-                user_obj = User.objects.get(email=email_or_user)
-                if not user_obj.is_active:
+        if django_user:
+            if not django_user.is_active:
+                return Response({'error': 'Your account has been suspended/blocked by the Administrator.'}, status=403)
+
+            # Validate password
+            authenticated_user = authenticate(username=django_user.username, password=password)
+            if not authenticated_user:
+                if django_user.check_password(password):
+                    authenticated_user = django_user
+
+            if authenticated_user:
+                # Find matching UserProfile
+                profile_qs = UserProfile.objects.filter(Q(email__iexact=django_user.email) | Q(name__iexact=django_user.first_name))
+                if company_slug and company_slug != 'all':
+                    matched_profile = profile_qs.filter(company_slug=company_slug).first() or profile_qs.first()
+                else:
+                    matched_profile = profile_qs.first()
+
+                comp_slug = matched_profile.company_slug if matched_profile else (company_slug or 'default')
+
+                if not matched_profile:
+                    matched_profile = UserProfile.objects.create(
+                        company_slug=comp_slug,
+                        name=django_user.first_name or django_user.username,
+                        email=django_user.email or f"{django_user.username}@stockflow.io",
+                        role='Administrator' if django_user.is_superuser else 'Warehouse Staff',
+                        avatar=(django_user.first_name or django_user.username)[:2].upper(),
+                        status='active'
+                    )
+
+                if matched_profile.status in ['blocked', 'inactive']:
                     return Response({'error': 'Your account has been suspended/blocked by the Administrator.'}, status=403)
-                user = authenticate(username=user_obj.username, password=password)
-            except User.DoesNotExist:
-                pass
 
-        if user is not None:
-            if not user.is_active:
-                return Response({'error': 'Your account has been suspended/blocked by the Administrator.'}, status=403)
+                comp = CompanyWorkspace.objects.filter(slug=matched_profile.company_slug).first()
 
-            comp_slug = company_slug or (profile.company_slug if profile else 'default')
-            profile, _ = UserProfile.objects.get_or_create(
-                email=user.email or f"{user.username}@stockflow.io",
-                defaults={
-                    'company_slug': comp_slug,
-                    'name': user.get_full_name() or user.username,
-                    'role': 'Administrator' if user.is_superuser else 'Warehouse Staff',
-                    'avatar': user.username[:2].upper(),
-                }
-            )
+                return Response({
+                    'message': 'Login successful',
+                    'user': {
+                        'username': django_user.username,
+                        'email': django_user.email,
+                        'name': matched_profile.name,
+                        'role': matched_profile.role,
+                        'company_slug': matched_profile.company_slug,
+                        'company_name': comp.name if comp else '',
+                        'company_email': comp.contact_email if comp else '',
+                    }
+                }, status=200)
 
+        # 2. Fallback: Search UserProfile table directly (case-insensitive)
+        profile_qs = UserProfile.objects.filter(
+            Q(email__iexact=email_or_user) | Q(name__iexact=email_or_user)
+        )
+        if company_slug and company_slug != 'all':
+            profile = profile_qs.filter(company_slug=company_slug).first() or profile_qs.first()
+        else:
+            profile = profile_qs.first()
+
+        if profile:
             if profile.status in ['blocked', 'inactive']:
                 return Response({'error': 'Your account has been suspended/blocked by the Administrator.'}, status=403)
 
-            comp = CompanyWorkspace.objects.filter(slug=profile.company_slug).first()
+            # Check if there is a linked Django User
+            django_user = User.objects.filter(
+                Q(email__iexact=profile.email) | Q(username__iexact=profile.email.split('@')[0])
+            ).first()
 
+            if django_user:
+                if not django_user.is_active:
+                    return Response({'error': 'Your account has been suspended/blocked by the Administrator.'}, status=403)
+                if django_user.check_password(password) or authenticate(username=django_user.username, password=password):
+                    comp = CompanyWorkspace.objects.filter(slug=profile.company_slug).first()
+                    return Response({
+                        'message': 'Login successful',
+                        'user': {
+                            'username': django_user.username,
+                            'email': profile.email,
+                            'name': profile.name,
+                            'role': profile.role,
+                            'company_slug': profile.company_slug,
+                            'company_name': comp.name if comp else '',
+                            'company_email': comp.contact_email if comp else '',
+                        }
+                    }, status=200)
+                else:
+                    return Response({'error': 'Invalid email/username or password.'}, status=401)
+
+            # Legacy profile without Django User: auto-create Django user with provided password
+            username = profile.email.split('@')[0] if '@' in profile.email else slugify(profile.name)
+            if User.objects.filter(username__iexact=username).exists():
+                username = f"{username}_{User.objects.count() + 1}"
+            django_user = User.objects.create_user(username=username, email=profile.email, password=password)
+            django_user.first_name = profile.name
+            if profile.role == 'Administrator':
+                django_user.is_staff = True
+                django_user.is_superuser = True
+            django_user.save()
+
+            comp = CompanyWorkspace.objects.filter(slug=profile.company_slug).first()
             return Response({
                 'message': 'Login successful',
                 'user': {
-                    'username': user.username,
-                    'email': user.email,
-                    'name': profile.name,
-                    'role': profile.role,
-                    'company_slug': profile.company_slug,
-                    'company_name': comp.name if comp else '',
-                    'company_email': comp.contact_email if comp else '',
-                }
-            }, status=200)
-
-        if profile:
-            comp = CompanyWorkspace.objects.filter(slug=profile.company_slug).first()
-            return Response({
-                'message': 'Login successful',
-                'user': {
-                    'username': profile.name,
+                    'username': django_user.username,
                     'email': profile.email,
                     'name': profile.name,
                     'role': profile.role,
