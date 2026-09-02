@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import { ArrowUpFromLine, Save, Package, AlertTriangle, ArrowLeftRight } from "lucide-react";
+import { ArrowUpFromLine, Save, Package, AlertTriangle, ArrowLeftRight, Hash, Tag, Info } from "lucide-react";
 import { PageHeader, pushSystemNotification } from "@/components/app-shell";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -96,7 +96,7 @@ export default function StockOutPage() {
       pushSystemNotification({
         title: `Stock Dispatched (-${numQty})`,
         sub: `${selectedProduct?.name || 'Item'} · Ref: ${reference.trim() || 'SO'}`,
-        message: `${numQty} units of "${selectedProduct?.name || 'Item'}" were dispatched out of warehouse stock by ${activeUser?.name || 'Administrator'}. Reference: ${reference.trim() || 'SO'}.`,
+        message: `${numQty} units of "${selectedProduct?.name || 'Item'}" (SKU: ${selectedProduct?.sku || 'N/A'}) were dispatched out of warehouse stock by ${activeUser?.name || 'Administrator'}. Reference: ${reference.trim() || 'SO'}.`,
         type: "info",
         category: "activity",
         link: "/stock-history",
@@ -135,21 +135,34 @@ export default function StockOutPage() {
           <CardContent>
             <form className="grid gap-4 sm:grid-cols-2" onSubmit={handleSubmit}>
               <div className="space-y-1.5 sm:col-span-2">
-                <Label>Product</Label>
+                <Label>Product Name / Select Item</Label>
                 <Select value={selectedProductId} onValueChange={setSelectedProductId}>
                   <SelectTrigger><SelectValue placeholder="Select product" /></SelectTrigger>
                   <SelectContent className="max-h-60">
                     {products.map(p => (
                       <SelectItem key={p.id} value={String(p.id)}>
-                        {p.emoji || "📦"} {p.name} — {p.sku} ({p.stock} available)
+                        {p.emoji || "📦"} {p.name} — [SKU: {p.sku}] ({p.stock} available)
                       </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
               </div>
 
+              {/* PRODUCT NUMBER / SKU DISPLAY BADGE */}
               <div className="space-y-1.5">
-                <Label>Current stock balance</Label>
+                <Label className="flex items-center gap-1">
+                  <Tag className="h-3.5 w-3.5 text-primary" /> Product Code (SKU / Barcode)
+                </Label>
+                <div className="flex items-center gap-2 rounded-md border bg-primary/5 px-3 h-10 text-sm font-semibold text-primary">
+                  <Hash className="h-4 w-4 text-primary" />
+                  {selectedProduct ? selectedProduct.sku : "Select product to view SKU"}
+                </div>
+              </div>
+
+              <div className="space-y-1.5">
+                <Label className="flex items-center gap-1">
+                  <Package className="h-3.5 w-3.5 text-muted-foreground" /> Current Stock Balance
+                </Label>
                 <div className={cn(
                   "flex items-center gap-2 rounded-md border px-3 h-10 text-sm font-medium transition-colors",
                   selectedProduct && selectedProduct.stock === 0
@@ -159,13 +172,13 @@ export default function StockOutPage() {
                     : "bg-muted/40"
                 )}>
                   <Package className="h-4 w-4 shrink-0" />
-                  {selectedProduct ? `${selectedProduct.stock} units remaining` : "Select a product above"}
+                  {selectedProduct ? `${selectedProduct.stock} units remaining` : "Select product to view balance"}
                 </div>
               </div>
 
-              <div className="space-y-1.5">
+              <div className="space-y-1.5 sm:col-span-2">
                 <Label className={cn(isExceedingStock && "text-destructive font-semibold")}>
-                  Quantity to remove
+                  Quantity to Remove
                 </Label>
                 <Input
                   type="number"
@@ -189,7 +202,7 @@ export default function StockOutPage() {
 
               <div className="space-y-1.5">
                 <Label>Destination / Customer / Branch</Label>
-                <Input value={destination} onChange={(e) => setDestination(e.target.value)} placeholder="e.g. Store #204, Downtown" />
+                <Input value={destination} onChange={(e) => setDestination(e.target.value)} placeholder="e.g. Store #204, Customer John" />
               </div>
 
               <div className="space-y-1.5">
@@ -205,9 +218,14 @@ export default function StockOutPage() {
                 </Select>
               </div>
 
-              <div className="space-y-1.5">
-                <Label>Reference # (SO/Dispatch)</Label>
-                <Input value={reference} onChange={(e) => setReference(e.target.value)} placeholder="SO-5511" />
+              <div className="space-y-1.5 sm:col-span-2">
+                <Label className="flex items-center gap-1.5">
+                  <span>Dispatch / Order Reference # (SO / Voucher)</span>
+                  <span className="text-xs text-muted-foreground font-normal flex items-center gap-1">
+                    <Info className="h-3 w-3 text-info" /> (Sales Order, Waybill, or Dispatch note number)
+                  </span>
+                </Label>
+                <Input value={reference} onChange={(e) => setReference(e.target.value)} placeholder="e.g. SO-5511 or WB-3012" />
               </div>
 
               <div className="space-y-1.5 sm:col-span-2">
@@ -231,7 +249,7 @@ export default function StockOutPage() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Product</TableHead>
+                  <TableHead>Product & SKU</TableHead>
                   <TableHead className="text-right">Qty</TableHead>
                 </TableRow>
               </TableHeader>
@@ -247,7 +265,10 @@ export default function StockOutPage() {
                     <TableRow key={m.id}>
                       <TableCell>
                         <div className="font-medium text-sm">{m.product_name}</div>
-                        <div className="text-xs text-muted-foreground">{m.reference || "SO"} · {m.user} · {m.date}</div>
+                        <div className="text-xs text-muted-foreground flex items-center gap-1.5 mt-0.5">
+                          <span className="font-mono bg-muted px-1.5 py-0.5 rounded text-[11px] font-semibold">{m.product_sku || "SKU"}</span>
+                          <span>· {m.reference || "SO"}</span>
+                        </div>
                       </TableCell>
                       <TableCell className="text-right font-semibold text-destructive">−{m.quantity}</TableCell>
                     </TableRow>

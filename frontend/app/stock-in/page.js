@@ -2,7 +2,7 @@
 
 import { useState, useEffect, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
-import { ArrowDownToLine, Save, Package } from "lucide-react";
+import { ArrowDownToLine, Save, Package, Hash, Tag, Info } from "lucide-react";
 import { PageHeader, pushSystemNotification } from "@/components/app-shell";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -90,7 +90,7 @@ function StockInForm() {
       pushSystemNotification({
         title: `Stock Received (+${quantity})`,
         sub: `${selectedProduct?.name || 'Item'} · Ref: ${reference}`,
-        message: `${quantity} units of "${selectedProduct?.name || 'Item'}" were received into warehouse stock by ${activeUser?.name || 'Administrator'}. Reference: ${reference || 'PO'}.`,
+        message: `${quantity} units of "${selectedProduct?.name || 'Item'}" (SKU: ${selectedProduct?.sku || 'N/A'}) were received into warehouse stock by ${activeUser?.name || 'Administrator'}. Reference: ${reference || 'PO'}.`,
         type: "success",
         category: "activity",
         link: "/stock-history",
@@ -116,27 +116,42 @@ function StockInForm() {
         <CardContent>
           <form className="grid gap-4 sm:grid-cols-2" onSubmit={handleSubmit}>
             <div className="space-y-1.5 sm:col-span-2">
-              <Label>Product</Label>
+              <Label>Product Name / Select Item</Label>
               <Select value={selectedProductId} onValueChange={setSelectedProductId}>
                 <SelectTrigger><SelectValue placeholder="Select product" /></SelectTrigger>
                 <SelectContent className="max-h-60">
                   {products.map(p => (
                     <SelectItem key={p.id} value={String(p.id)}>
-                      {p.emoji || "📦"} {p.name} — {p.sku} ({p.stock} in stock)
+                      {p.emoji || "📦"} {p.name} — [SKU: {p.sku}] ({p.stock} in stock)
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
             </div>
+
+            {/* PRODUCT NUMBER / SKU DISPLAY BADGE */}
             <div className="space-y-1.5">
-              <Label>Current stock balance</Label>
-              <div className="flex items-center gap-2 rounded-md border bg-muted/40 px-3 h-10 text-sm font-medium">
-                <Package className="h-4 w-4 text-muted-foreground" />
-                {selectedProduct ? `${selectedProduct.stock} units` : "Select a product above"}
+              <Label className="flex items-center gap-1">
+                <Tag className="h-3.5 w-3.5 text-primary" /> Product Code (SKU / Barcode)
+              </Label>
+              <div className="flex items-center gap-2 rounded-md border bg-primary/5 px-3 h-10 text-sm font-semibold text-primary">
+                <Hash className="h-4 w-4 text-primary" />
+                {selectedProduct ? selectedProduct.sku : "Select product to view SKU"}
               </div>
             </div>
+
             <div className="space-y-1.5">
-              <Label>Quantity to add</Label>
+              <Label className="flex items-center gap-1">
+                <Package className="h-3.5 w-3.5 text-muted-foreground" /> Current Stock Balance
+              </Label>
+              <div className="flex items-center gap-2 rounded-md border bg-muted/40 px-3 h-10 text-sm font-medium">
+                <Package className="h-4 w-4 text-muted-foreground" />
+                {selectedProduct ? `${selectedProduct.stock} units` : "Select product to view balance"}
+              </div>
+            </div>
+
+            <div className="space-y-1.5">
+              <Label>Quantity to Add</Label>
               <Input
                 type="number"
                 min="1"
@@ -146,6 +161,7 @@ function StockInForm() {
                 required
               />
             </div>
+
             <div className="space-y-1.5">
               <Label>Supplier</Label>
               <Select value={selectedSupplierId} onValueChange={setSelectedSupplierId}>
@@ -155,14 +171,22 @@ function StockInForm() {
                 </SelectContent>
               </Select>
             </div>
-            <div className="space-y-1.5">
-              <Label>Reference # (PO/Invoice)</Label>
-              <Input value={reference} onChange={(e) => setReference(e.target.value)} placeholder="PO-8822" />
-            </div>
+
             <div className="space-y-1.5 sm:col-span-2">
-              <Label>Notes / Delivery details</Label>
+              <Label className="flex items-center gap-1.5">
+                <span>Receipt / Order Reference # (PO / Invoice)</span>
+                <span className="text-xs text-muted-foreground font-normal flex items-center gap-1">
+                  <Info className="h-3 w-3 text-info" /> (Supplier Invoice or Purchase Order number)
+                </span>
+              </Label>
+              <Input value={reference} onChange={(e) => setReference(e.target.value)} placeholder="e.g. PO-8822 or INV-9901" />
+            </div>
+
+            <div className="space-y-1.5 sm:col-span-2">
+              <Label>Notes / Delivery Details</Label>
               <Textarea value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Optional details about this delivery shipment" rows={3} />
             </div>
+
             <div className="sm:col-span-2 flex justify-end gap-2 pt-2">
               <Button variant="outline" type="button" onClick={handleResetForm}>Reset Form</Button>
               <Button type="submit" disabled={submitting}>
@@ -179,7 +203,7 @@ function StockInForm() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Product</TableHead>
+                <TableHead>Product & SKU</TableHead>
                 <TableHead className="text-right">Qty</TableHead>
               </TableRow>
             </TableHeader>
@@ -195,7 +219,10 @@ function StockInForm() {
                   <TableRow key={m.id}>
                     <TableCell>
                       <div className="font-medium text-sm">{m.product_name}</div>
-                      <div className="text-xs text-muted-foreground">{m.reference || "PO"} · {m.user} · {m.date}</div>
+                      <div className="text-xs text-muted-foreground flex items-center gap-1.5 mt-0.5">
+                        <span className="font-mono bg-muted px-1.5 py-0.5 rounded text-[11px] font-semibold">{m.product_sku || "SKU"}</span>
+                        <span>· {m.reference || "PO"}</span>
+                      </div>
                     </TableCell>
                     <TableCell className="text-right font-semibold text-success">+{m.quantity}</TableCell>
                   </TableRow>

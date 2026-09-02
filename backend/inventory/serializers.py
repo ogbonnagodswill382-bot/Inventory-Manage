@@ -64,12 +64,13 @@ class ProductSerializer(serializers.ModelSerializer):
 
 class StockMovementSerializer(serializers.ModelSerializer):
     product_name = serializers.CharField(source='product.name', read_only=True)
+    product_sku = serializers.CharField(source='product.sku', read_only=True)
     date = serializers.SerializerMethodField()
 
     class Meta:
         model = StockMovement
         fields = [
-            'id', 'company_slug', 'product', 'product_name', 'type', 'quantity',
+            'id', 'company_slug', 'product', 'product_name', 'product_sku', 'type', 'quantity',
             'user', 'reference', 'notes', 'date'
         ]
 
