@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Search, FileDown, Calendar, ArrowUpRight, ArrowDownRight, History } from "lucide-react";
+import { Search, FileDown, Calendar, ArrowUpRight, ArrowDownRight, History, ChevronLeft, ChevronRight } from "lucide-react";
 import { PageHeader } from "@/components/app-shell";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -18,6 +18,10 @@ export default function HistoryPage() {
   const [search, setSearch] = useState("");
   const [typeFilter, setTypeFilter] = useState("all");
 
+  // Pagination states
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
+
   useEffect(() => {
     async function loadData() {
       const apiData = await getMovements();
@@ -31,12 +35,18 @@ export default function HistoryPage() {
   const filteredMovements = movementList.filter((m) => {
     const matchesSearch =
       (m.product_name || "").toLowerCase().includes(search.toLowerCase()) ||
+      (m.product_sku || "").toLowerCase().includes(search.toLowerCase()) ||
       (m.reference || "").toLowerCase().includes(search.toLowerCase()) ||
       (m.user || "").toLowerCase().includes(search.toLowerCase());
 
     const matchesType = typeFilter === "all" || m.type === typeFilter;
     return matchesSearch && matchesType;
   });
+
+  const totalPages = pageSize === "all" ? 1 : Math.ceil(filteredMovements.length / (pageSize || 10)) || 1;
+  const paginatedMovements = pageSize === "all" 
+    ? filteredMovements 
+    : filteredMovements.slice((currentPage - 1) * pageSize, currentPage * pageSize);
 
   const handleExportPDF = () => {
     if (filteredMovements.length === 0) {
@@ -104,10 +114,13 @@ export default function HistoryPage() {
                 placeholder="Search product, SKU, user or reference…"
                 className="pl-9"
                 value={search}
-                onChange={(e) => setSearch(e.target.value)}
+                onChange={(e) => {
+                  setSearch(e.target.value);
+                  setCurrentPage(1);
+                }}
               />
             </div>
-            <Select value={typeFilter} onValueChange={setTypeFilter}>
+            <Select value={typeFilter} onValueChange={(val) => { setTypeFilter(val); setCurrentPage(1); }}>
               <SelectTrigger className="w-[160px]">
                 <SelectValue placeholder="All Movement Types" />
               </SelectTrigger>
@@ -133,7 +146,7 @@ export default function HistoryPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filteredMovements.length === 0 ? (
+                {paginatedMovements.length === 0 ? (
                   <TableRow>
                     <TableCell colSpan={7} className="text-center py-10 text-muted-foreground">
                       <History className="h-8 w-8 mx-auto mb-2 text-muted-foreground/40" />
@@ -141,7 +154,7 @@ export default function HistoryPage() {
                     </TableCell>
                   </TableRow>
                 ) : (
-                  filteredMovements.map((m) => (
+                  paginatedMovements.map((m) => (
                     <TableRow key={m.id}>
                       <TableCell className="text-muted-foreground text-sm whitespace-nowrap">{m.date}</TableCell>
                       <TableCell>
@@ -166,6 +179,61 @@ export default function HistoryPage() {
                 )}
               </TableBody>
             </Table>
+          </div>
+
+          {/* ROWS PER PAGE & PAGINATION CONTROLS */}
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-3 border-t">
+            <div className="flex items-center gap-2 text-xs text-muted-foreground">
+              <span>Rows per page:</span>
+              <Select
+                value={String(pageSize)}
+                onValueChange={(val) => {
+                  setPageSize(val === "all" ? "all" : Number(val));
+                  setCurrentPage(1);
+                }}
+              >
+                <SelectTrigger className="h-8 w-[75px] text-xs">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="10">10</SelectItem>
+                  <SelectItem value="25">25</SelectItem>
+                  <SelectItem value="50">50</SelectItem>
+                  <SelectItem value="100">100</SelectItem>
+                  <SelectItem value="all">All</SelectItem>
+                </SelectContent>
+              </Select>
+              <span>
+                Showing {filteredMovements.length === 0 ? 0 : (currentPage - 1) * (pageSize === "all" ? filteredMovements.length : pageSize) + 1}–
+                {pageSize === "all" ? filteredMovements.length : Math.min(currentPage * pageSize, filteredMovements.length)} of {filteredMovements.length} entries
+              </span>
+            </div>
+
+            {pageSize !== "all" && totalPages > 1 && (
+              <div className="flex items-center gap-1">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                  disabled={currentPage === 1}
+                  className="h-8 w-8 p-0"
+                >
+                  <ChevronLeft className="h-4 w-4" />
+                </Button>
+                <span className="text-xs px-2 font-medium">
+                  Page {currentPage} of {totalPages}
+                </span>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                  disabled={currentPage === totalPages}
+                  className="h-8 w-8 p-0"
+                >
+                  <ChevronRight className="h-4 w-4" />
+                </Button>
+              </div>
+            )}
           </div>
         </CardContent>
       </Card>
