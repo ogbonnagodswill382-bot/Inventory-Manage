@@ -13,6 +13,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { getProducts, getSuppliers, getMovements, recordStockIn } from "@/lib/api";
 import { getAuthUser } from "@/lib/auth";
+import { formatCurrency } from "@/lib/theme";
 import { toast } from "sonner";
 
 function StockInForm() {
@@ -132,11 +133,11 @@ function StockInForm() {
             {/* PRODUCT NUMBER / SKU DISPLAY BADGE */}
             <div className="space-y-1.5">
               <Label className="flex items-center gap-1">
-                <Tag className="h-3.5 w-3.5 text-primary" /> Product Code (SKU / Barcode)
+                <Tag className="h-3.5 w-3.5 text-primary" /> Product Code (SKU)
               </Label>
               <div className="flex items-center gap-2 rounded-md border bg-primary/5 px-3 h-10 text-sm font-semibold text-primary">
                 <Hash className="h-4 w-4 text-primary" />
-                {selectedProduct ? selectedProduct.sku : "Select product to view SKU"}
+                {selectedProduct ? `${selectedProduct.sku} (${formatCurrency(selectedProduct.price)})` : "Select product to view SKU"}
               </div>
             </div>
 
@@ -160,6 +161,11 @@ function StockInForm() {
                 onChange={(e) => setQuantity(e.target.value)}
                 required
               />
+              {selectedProduct && Number(quantity) > 0 && (
+                <div className="text-[11px] font-semibold text-success pt-0.5">
+                  Added Inventory Value: {formatCurrency(Number(selectedProduct.price) * Number(quantity))}
+                </div>
+              )}
             </div>
 
             <div className="space-y-1.5">

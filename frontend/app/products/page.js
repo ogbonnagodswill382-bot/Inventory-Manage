@@ -310,19 +310,43 @@ export default function ProductsPage() {
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                <div className="space-y-1">
-                  <Label>Price ({currencySymbol})</Label>
-                  <Input type="number" step="0.01" value={price} onChange={(e) => setPrice(e.target.value)} required />
+                <div className="space-y-1 sm:col-span-1">
+                  <Label>Unit Price ({currencySymbol})</Label>
+                  <Input type="number" step="0.01" min="0" value={price} onChange={(e) => setPrice(e.target.value)} required />
+                  {price && !isNaN(Number(price)) && Number(price) > 0 && (
+                    <div className="text-[11px] pt-0.5 space-y-0.5">
+                      <div className="font-semibold text-primary">
+                        Preview: {formatCurrency(price)}
+                      </div>
+                      {Number(price) >= 1000 && (
+                        <div className="inline-flex items-center gap-1 font-bold text-[10px] bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 px-1.5 py-0.5 rounded border border-emerald-500/20">
+                          💎 1k+ Item ({formatCurrency(price)})
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
-                <div className="space-y-1">
-                  <Label>Initial Stock</Label>
-                  <Input type="number" value={stock} onChange={(e) => setStock(e.target.value)} required />
+
+                <div className="space-y-1 sm:col-span-1">
+                  <Label>Initial Stock Qty</Label>
+                  <Input type="number" min="0" value={stock} onChange={(e) => setStock(e.target.value)} required />
                 </div>
-                <div className="space-y-1">
-                  <Label>Alert Minimum</Label>
-                  <Input type="number" value={threshold} onChange={(e) => setThreshold(e.target.value)} required />
+
+                <div className="space-y-1 sm:col-span-1">
+                  <Label>Low Stock Alert Level</Label>
+                  <Input type="number" min="1" value={threshold} onChange={(e) => setThreshold(e.target.value)} required />
                 </div>
               </div>
+
+              {/* LIVE TOTAL VALUE CALCULATOR PREVIEW */}
+              {price && stock && !isNaN(Number(price)) && !isNaN(Number(stock)) && (
+                <div className="rounded-md border bg-muted/30 p-2.5 flex items-center justify-between text-xs">
+                  <span className="text-muted-foreground font-medium">Calculated Stock Value:</span>
+                  <span className="font-bold text-sm text-primary">
+                    {formatCurrency(Number(price) * Number(stock))}
+                  </span>
+                </div>
+              )}
             </div>
 
             <DialogFooter>
