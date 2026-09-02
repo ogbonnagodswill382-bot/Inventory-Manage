@@ -193,7 +193,7 @@ function addAllStoredReadNotifications(ids) {
   } catch {}
 }
 
-function SidebarContent({ onNavigate, collapsed = false, onToggleCollapse }) {
+function SidebarContent({ onNavigate, collapsed = false, onToggleCollapse, onRequestLogout }) {
   const pathname = usePathname();
   const [currentUser, setCurrentUser] = useState({
     name: "User",
@@ -291,46 +291,20 @@ function SidebarContent({ onNavigate, collapsed = false, onToggleCollapse }) {
                       active
                         ? "bg-primary/10 text-primary font-semibold shadow-xs"
                         : "text-sidebar-foreground/70 hover:bg-sidebar-accent/70 hover:text-sidebar-foreground"
-              <span className="font-semibold text-base tracking-tight text-sidebar-foreground truncate block">StockFlow</span>
-              <span className="text-[10px] text-muted-foreground font-medium uppercase tracking-wider block">Inventory Manager</span>
+                    )}
+                  >
+                    {active && (
+                      <span className="absolute left-0 top-1.5 bottom-1.5 w-1 rounded-r-full bg-primary" />
+                    )}
+                    <Icon className={cn("h-4 w-4 shrink-0 transition-colors", active ? "text-primary" : "text-muted-foreground group-hover:text-sidebar-foreground")} />
+                    {!collapsed && <span className="truncate flex-1">{item.label}</span>}
+                  </Link>
+                );
+              })}
             </div>
-          )}
-        </Link>
-        <button
-          type="button"
-          onClick={onToggleCollapse}
-          className="hidden lg:grid h-7 w-7 place-items-center rounded-lg text-muted-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground transition cursor-pointer"
-          title={collapsed ? "Expand Sidebar" : "Collapse Sidebar"}
-        >
-          {collapsed ? <ChevronsRight className="h-4 w-4" /> : <ChevronsLeft className="h-4 w-4" />}
-        </button>
-      </div>
-
-      {/* Navigation Items */}
-      <div className="flex-1 overflow-y-auto px-3 py-4 space-y-1 scrollbar-none">
-        {nav.map((item) => {
-          const Icon = item.icon;
-          const isActive = pathname === item.href;
-          return (
-            <Link
-              key={item.name}
-              href={item.href}
-              onClick={onNavigate}
-              title={collapsed ? item.name : undefined}
-              className={cn(
-                "flex items-center gap-3 rounded-lg text-sm font-medium transition-all duration-150 cursor-pointer",
-                collapsed ? "justify-center h-10 w-10 mx-auto px-0" : "px-3 py-2.5",
-                isActive
-                  ? "bg-sidebar-primary text-sidebar-primary-foreground font-semibold shadow-sm"
-                  : "text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
-              )}
-            >
-              <Icon className={cn("h-4 w-4 shrink-0", isActive ? "text-sidebar-primary-foreground" : "text-sidebar-foreground/60")} />
-              {!collapsed && <span className="truncate">{item.name}</span>}
-            </Link>
-          );
-        })}
-      </div>
+          </div>
+        ))}
+      </nav>
 
       {/* TIER STATUS BADGE CARD */}
       {!collapsed && userTier && (
