@@ -93,7 +93,10 @@ export function pushSystemNotification({ title, sub, message, type = "info", cat
   if (typeof window === "undefined") return;
   try {
     const list = getStoredSystemNotifications();
-    const newId = `custom-act-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
+    const now = new Date();
+    const newId = `custom-act-${now.getTime()}-${Math.floor(Math.random() * 1000)}`;
+    const formattedTime = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    const formattedDate = now.toLocaleDateString([], { month: 'short', day: 'numeric' });
     const newNotification = {
       id: newId,
       title,
@@ -102,10 +105,11 @@ export function pushSystemNotification({ title, sub, message, type = "info", cat
       type,
       category,
       link,
-      time: "Just now",
+      time: `${formattedDate}, ${formattedTime}`,
+      timestamp: now.getTime(),
     };
     list.unshift(newNotification);
-    localStorage.setItem("stockflow_custom_activity_notifications", JSON.stringify(list.slice(0, 30)));
+    localStorage.setItem("stockflow_custom_activity_notifications", JSON.stringify(list.slice(0, 50)));
   } catch (e) {
     console.error("Failed to push notification:", e);
   }
@@ -552,6 +556,7 @@ function Notifications() {
         contactReqs.forEach((r) => {
           const id = `contact-${r.id}`;
           if (!clearedList.includes(id)) {
+            const reqTimestamp = r.created_at ? new Date(r.created_at).getTime() : Date.now();
             list.push({
               id,
               title: `Staff Access Request: ${r.name}`,
@@ -560,6 +565,7 @@ function Notifications() {
               applicantName: r.name,
               applicantEmail: r.email,
               time: r.date || "Just now",
+              timestamp: reqTimestamp,
               type: "contact",
               category: "requests",
               link: `/users?name=${encodeURIComponent(r.name)}&email=${encodeURIComponent(r.email)}`,
@@ -574,12 +580,14 @@ function Notifications() {
           if (t.status === "returned_to_stock") {
             const id = `transfer-ret-${t.id}`;
             if (!clearedList.includes(id)) {
+              const retTimestamp = t.returned_date ? new Date(t.returned_date).getTime() : Date.now();
               list.push({
                 id,
                 title: `Goods Returned & Approved: ${t.product_name}`,
                 sub: `+${t.quantity} units from ${t.destination} · Approved by ${t.approved_by || 'Administrator'}`,
                 message: `Goods Return Audit Approved: ${t.quantity} units of "${t.product_name}" (SKU: ${t.product_sku}) were returned back from ${t.destination} and restocked directly into warehouse inventory. Approved by ${t.approved_by || 'Administrator'}.`,
                 time: t.returned_date || "Recently",
+                timestamp: retTimestamp,
                 type: "success",
                 category: "activity",
                 link: "/transfers",
@@ -603,7 +611,8 @@ function Notifications() {
                 sku: p.sku,
                 stock: p.stock,
                 threshold: p.threshold,
-                time: "Urgent",
+                time: "Urgent Alert",
+                timestamp: Date.now() + 5000, // Urgent live alerts pinned near top
                 type: "danger",
                 category: "urgent",
                 link: `/stock-in?product=${p.id}`,
@@ -622,6 +631,7 @@ function Notifications() {
                 stock: p.stock,
                 threshold: p.threshold,
                 time: "Warning",
+                timestamp: Date.now() + 1000,
                 type: "warning",
                 category: "urgent",
                 link: `/stock-in?product=${p.id}`,
@@ -632,15 +642,17 @@ function Notifications() {
       }
 
       if (moves && Array.isArray(moves)) {
-        moves.slice(0, 3).forEach((m) => {
+        moves.slice(0, 5).forEach((m) => {
           const id = `move-${m.id}`;
           if (!clearedList.includes(id)) {
+            const moveTimestamp = m.date ? new Date(m.date).getTime() : Date.now();
             list.push({
               id,
               title: `Stock ${m.type === "in" ? "Received (+)" : "Dispatched (-)"}`,
               sub: `${m.product_name} · ${m.quantity} units by ${m.user}`,
               message: `Audit Record: ${m.quantity} units of "${m.product_name}" were ${m.type === "in" ? "received into stock" : "dispatched out of stock"} by ${m.user}. Reference: ${m.reference || 'PO/SO'}.`,
               time: m.date || "Recently",
+              timestamp: moveTimestamp,
               type: m.type === "in" ? "success" : "info",
               category: "activity",
               link: "/stock-history",
@@ -653,15 +665,19 @@ function Notifications() {
       if (customList && Array.isArray(customList)) {
         customList.forEach((c) => {
           if (!clearedList.includes(c.id)) {
+            const cTimestamp = c.timestamp || Date.now();
             // Staff Access Requests are restricted EXCLUSIVELY to Company Administrators
             if (c.category === "requests" || c.type === "contact" || c.title?.includes("Staff Access Request")) {
-              if (isAdmin) list.unshift(c);
+              if (isAdmin) list.push({ ...c, timestamp: cTimestamp });
             } else {
-              list.unshift(c);
+              list.push({ ...c, timestamp: cTimestamp });
             }
           }
         });
       }
+
+      // SORT ALL NOTIFICATIONS REVERSE-CHRONOLOGICALLY (NEWEST AT THE TOP, PREVIOUS ONES AT THE BOTTOM)
+      list.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
 
       setNotifications(list);
     }

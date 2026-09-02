@@ -43,13 +43,14 @@ export default function HistoryPage() {
       toast.error("No movements to export");
       return;
     }
-    const columns = ["Date", "Product", "Type", "Quantity", "Balance", "User", "Reference"];
+    const columns = ["Date", "Product", "SKU", "Type", "Quantity", "Stock Balance", "User", "Reference"];
     const rows = filteredMovements.map((m) => [
       m.date,
       m.product_name,
+      m.product_sku || "N/A",
       m.type === "in" ? "Stock In" : "Stock Out",
       m.type === "in" ? `+${m.quantity}` : `-${m.quantity}`,
-      m.balance,
+      m.product_stock !== undefined ? `${m.product_stock} units` : (m.balance || "N/A"),
       m.user,
       m.reference || "N/A",
     ]);
@@ -62,13 +63,14 @@ export default function HistoryPage() {
       toast.error("No movements to export");
       return;
     }
-    const headers = ["Date", "Product", "Type", "Quantity", "Balance", "User", "Reference"];
+    const headers = ["Date", "Product", "SKU", "Type", "Quantity", "Stock Balance", "User", "Reference"];
     const rows = filteredMovements.map((m) => [
       m.date,
       m.product_name,
+      m.product_sku || "",
       m.type === "in" ? "Stock In" : "Stock Out",
       m.quantity,
-      m.balance,
+      m.product_stock !== undefined ? m.product_stock : (m.balance || ""),
       m.user,
       m.reference || "",
     ]);
@@ -99,7 +101,7 @@ export default function HistoryPage() {
             <div className="relative flex-1 min-w-[200px]">
               <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
               <Input
-                placeholder="Search product, user or reference…"
+                placeholder="Search product, SKU, user or reference…"
                 className="pl-9"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
@@ -121,13 +123,13 @@ export default function HistoryPage() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Date</TableHead>
-                  <TableHead>Product</TableHead>
+                  <TableHead>Date & Time</TableHead>
+                  <TableHead>Product & SKU</TableHead>
                   <TableHead className="text-right">In</TableHead>
                   <TableHead className="text-right">Out</TableHead>
-                  <TableHead className="text-right">Balance</TableHead>
+                  <TableHead className="text-right">Stock Balance</TableHead>
                   <TableHead>Performed by</TableHead>
-                  <TableHead>Reference</TableHead>
+                  <TableHead>Reference #</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -141,15 +143,22 @@ export default function HistoryPage() {
                 ) : (
                   filteredMovements.map((m) => (
                     <TableRow key={m.id}>
-                      <TableCell className="text-muted-foreground text-sm">{m.date}</TableCell>
-                      <TableCell className="font-medium">{m.product_name}</TableCell>
+                      <TableCell className="text-muted-foreground text-sm whitespace-nowrap">{m.date}</TableCell>
+                      <TableCell>
+                        <div className="font-medium">{m.product_name}</div>
+                        <div className="text-xs text-muted-foreground font-mono mt-0.5">
+                          <span className="bg-muted px-1.5 py-0.5 rounded text-[11px] font-semibold">{m.product_sku || "SKU"}</span>
+                        </div>
+                      </TableCell>
                       <TableCell className={cn("text-right", m.type === "in" ? "text-success font-semibold" : "text-muted-foreground")}>
                         {m.type === "in" ? <span className="inline-flex items-center gap-1"><ArrowDownRight className="h-3 w-3" />+{m.quantity}</span> : "—"}
                       </TableCell>
                       <TableCell className={cn("text-right", m.type === "out" ? "text-destructive font-semibold" : "text-muted-foreground")}>
                         {m.type === "out" ? <span className="inline-flex items-center gap-1"><ArrowUpRight className="h-3 w-3" />−{m.quantity}</span> : "—"}
                       </TableCell>
-                      <TableCell className="text-right font-semibold">{m.balance}</TableCell>
+                      <TableCell className="text-right font-bold text-foreground">
+                        {m.product_stock !== undefined ? `${m.product_stock} units` : (m.balance ? `${m.balance} units` : "—")}
+                      </TableCell>
                       <TableCell className="text-muted-foreground">{m.user}</TableCell>
                       <TableCell className="font-mono text-xs">{m.reference || "N/A"}</TableCell>
                     </TableRow>
