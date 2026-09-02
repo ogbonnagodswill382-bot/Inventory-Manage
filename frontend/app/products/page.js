@@ -64,11 +64,30 @@ export default function ProductsPage() {
     loadData();
   }, []);
 
+  const generateSequentialSKU = (existingProducts = []) => {
+    let highestNum = 1000;
+    if (Array.isArray(existingProducts)) {
+      existingProducts.forEach((p) => {
+        if (p.sku) {
+          const matches = p.sku.match(/\d+/g);
+          if (matches) {
+            const num = parseInt(matches[matches.length - 1], 10);
+            if (!isNaN(num) && num > highestNum) {
+              highestNum = num;
+            }
+          }
+        }
+      });
+    }
+    const nextNum = highestNum + 1;
+    return `PRD-${nextNum}`;
+  };
+
   const handleOpenAddModal = () => {
     const appSettings = getAppSettings();
     setEditProduct(null);
     setName("");
-    setSku(`SF-${Date.now().toString().slice(-6)}`);
+    setSku(generateSequentialSKU(productList));
     setCategoryId(categories.length > 0 ? String(categories[0].id) : "");
     setSupplierId(suppliers.length > 0 ? String(suppliers[0].id) : "");
     setPrice("99.99");
@@ -99,7 +118,7 @@ export default function ProductsPage() {
     }
 
     setSubmitting(true);
-    const finalSku = sku.trim() || `SF-${Date.now().toString().slice(-6)}`;
+    const finalSku = sku.trim() || generateSequentialSKU(productList);
     const activeUser = getAuthUser();
 
     const payload = {
@@ -259,8 +278,9 @@ export default function ProductsPage() {
                 </div>
 
                 <div className="space-y-1">
-                  <Label>SKU (Auto-Generated)</Label>
-                  <Input value={sku} onChange={(e) => setSku(e.target.value)} placeholder="SF-100001" />
+                  <Label>Product Number / SKU (Auto-Generated)</Label>
+                  <Input value={sku} onChange={(e) => setSku(e.target.value)} placeholder="e.g. PRD-1001" />
+                  <p className="text-[11px] text-muted-foreground">Auto-assigned sequentially (PRD-1001, PRD-1002...). You can edit manually if needed.</p>
                 </div>
               </div>
 
