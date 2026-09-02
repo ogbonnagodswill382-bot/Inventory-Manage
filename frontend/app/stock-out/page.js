@@ -23,7 +23,7 @@ export default function StockOutPage() {
   const [selectedProductId, setSelectedProductId] = useState("");
   const [quantity, setQuantity] = useState("1");
   const [destination, setDestination] = useState("");
-  const [reason, setReason] = useState("sale");
+  const [reason, setReason] = useState("");
   const [reference, setReference] = useState(`SO-${Math.floor(1000 + Math.random() * 9000)}`);
   const [notes, setNotes] = useState("");
   const [submitting, setSubmitting] = useState(false);
@@ -49,9 +49,25 @@ export default function StockOutPage() {
     setSelectedProductId("");
     setQuantity("1");
     setDestination("");
-    setReason("sale");
+    setReason("");
     setReference(`SO-${Math.floor(1000 + Math.random() * 9000)}`);
     setNotes("");
+  };
+
+  const getReasonLabel = (notesStr = "") => {
+    if (!notesStr) return "Dispatched Out";
+    const lower = notesStr.toLowerCase();
+    if (lower.includes("transfer")) return "🚚 Inter-Branch Transfer";
+    if (lower.includes("damaged") || lower.includes("expired")) return "⚠️ Damaged / Expired";
+    if (lower.includes("return")) return "↩️ Return to Supplier";
+    if (lower.includes("sale")) return "🛒 Customer Sale";
+    return "📦 Dispatched Out";
+  };
+
+  const getDestinationText = (notesStr = "") => {
+    if (!notesStr) return null;
+    const match = notesStr.match(/Destination:\s*([^.]+)/i);
+    return match && match[1] ? match[1].trim() : null;
   };
 
   const handleSubmit = async (e) => {
@@ -62,6 +78,12 @@ export default function StockOutPage() {
     }
     if (!quantity || numQty <= 0) {
       toast.error("Please enter a valid quantity to remove");
+      return;
+    }
+    if (!reason) {
+      toast.error("Please select a reason for stock out", {
+        description: "Choose why stock is leaving (e.g. Sale, Transfer, Damaged, or Return).",
+      });
       return;
     }
     if (isExceedingStock) {
@@ -96,7 +118,7 @@ export default function StockOutPage() {
       pushSystemNotification({
         title: `Stock Dispatched (-${numQty})`,
         sub: `${selectedProduct?.name || 'Item'} · Ref: ${reference.trim() || 'SO'}`,
-        message: `${numQty} units of "${selectedProduct?.name || 'Item'}" (SKU: ${selectedProduct?.sku || 'N/A'}) were dispatched out of warehouse stock by ${activeUser?.name || 'Administrator'}. Reference: ${reference.trim() || 'SO'}.`,
+        message: `${numQty} units of "${selectedProduct?.name || 'Item'}" (SKU: ${selectedProduct?.sku || 'N/A'}) were dispatched out of warehouse stock by ${activeUser?.name || 'Administrator'}. Action: ${getReasonLabel(fullNotes)}. Reference: ${reference.trim() || 'SO'}.`,
         type: "info",
         category: "activity",
         link: "/stock-history",
@@ -206,14 +228,16 @@ export default function StockOutPage() {
               </div>
 
               <div className="space-y-1.5">
-                <Label>Reason</Label>
+                <Label className="flex items-center gap-1 text-foreground font-semibold">
+                  Reason <span className="text-destructive">*</span>
+                </Label>
                 <Select value={reason} onValueChange={setReason}>
-                  <SelectTrigger><SelectValue placeholder="Select reason" /></SelectTrigger>
+                  <SelectTrigger><SelectValue placeholder="Select reason for stock out..." /></SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="sale">Sale / Order Fulfillment</SelectItem>
-                    <SelectItem value="transfer">Inter-warehouse Transfer</SelectItem>
-                    <SelectItem value="damaged">Damaged / Expired</SelectItem>
-                    <SelectItem value="return">Return to Supplier</SelectItem>
+                    <SelectItem value="sale">🛒 Customer Sale / Fulfillment</SelectItem>
+                    <SelectItem value="transfer">🚚 Inter-warehouse Transfer</SelectItem>
+                    <SelectItem value="damaged">⚠️ Damaged / Expired Item</SelectItem>
+                    <SelectItem value="return">↩️ Return to Supplier</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -249,7 +273,7 @@ export default function StockOutPage() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Product & SKU</TableHead>
+                  <TableHead>Product, SKU & Action</TableHead>
                   <TableHead className="text-right">Qty</TableHead>
                 </TableRow>
               </TableHeader>
@@ -263,14 +287,24 @@ export default function StockOutPage() {
                 ) : (
                   movements.slice(0, 8).map(m => (
                     <TableRow key={m.id}>
-                      <TableCell>
+                      <TableCell className="py-2.5">
                         <div className="font-medium text-sm">{m.product_name}</div>
-                        <div className="text-xs text-muted-foreground flex items-center gap-1.5 mt-0.5">
-                          <span className="font-mono bg-muted px-1.5 py-0.5 rounded text-[11px] font-semibold">{m.product_sku || "SKU"}</span>
+                        <div className="text-xs text-muted-foreground flex flex-wrap items-center gap-1.5 mt-0.5">
+                          <span className="font-mono bg-muted px-1.5 py-0.5 rounded text-[11px] font-semibold text-foreground">
+                            {m.product_sku || "SKU"}
+                          </span>
                           <span>· {m.reference || "SO"}</span>
                         </div>
+                        <div className="text-[11px] text-muted-foreground font-medium mt-1 flex flex-wrap items-center gap-1.5">
+                          <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-destructive/10 text-destructive">
+                            {getReasonLabel(m.notes)}
+                          </span>
+                          {getDestinationText(m.notes) && (
+                            <span className="text-muted-foreground truncate">→ {getDestinationText(m.notes)}</span>
+                          )}
+                        </div>
                       </TableCell>
-                      <TableCell className="text-right font-semibold text-destructive">−{m.quantity}</TableCell>
+                      <TableCell className="text-right font-bold text-destructive">−{m.quantity}</TableCell>
                     </TableRow>
                   ))
                 )}
